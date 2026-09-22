@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Day-to-day operations for an installed AI Map server.
+#
+#   aimapctl status              services and health
+#   aimapctl health              API capabilities (what data is installed)
+#   aimapctl logs [service]      follow logs (web, api, db, photon)
+#   aimapctl start|stop|restart
+#   aimapctl backup [file]       dump drawings (PostgreSQL) to a file
+#   aimapctl restore <file>      restore drawings from a backup (replaces current drawings)
+#   aimapctl version             installed bundles
+#   aimapctl uninstall [--purge] remove containers (--purge also deletes drawings and map data)
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+[[ -f "$APP_DIR/docker-compose.yml" && -f "$APP_DIR/.env" ]] || { echo "AI Map is not installed in $APP_DIR" >&2; exit 1; }
+set -a; . "$APP_DIR/.env"; set +a
+
+if docker compose version >/dev/null 2>&1; then COMPOSE=(docker compose)
+elif command -v docker-compose >/dev/null; then COMPOSE=(docker-compose)
+elif [[ -x "$APP_DIR/bin/docker-compose" ]]; then COMPOSE=("$APP_DIR/bin/docker-compose")
+else echo "Docker Compose not found" >&2; exit 1; fi
+compose() { (cd "$APP_DIR" && "${COMPOSE[@]}" "$@"); }
+fetch() { if command -v curl >/dev/null; then curl -fsS --max-time 5 "$1"; else wget -qO- --timeout=5 "$1"; fi; }
+
+cmd="${1:-status}"
+shift || true
+case "$cmd" in
+  status)
+    compose ps
+    echo
+    if fetch "http://127.0.0.1:${HTTP_PORT:-80}/api/v1/health" >/dev/null 2>&1; then echo "application: healthy"; else echo "application: NOT responding"; exit 1; fi
+    ;;
+  health)
+    fetch "http://127.0.0.1:${HTTP_PORT:-80}/api/v1/capabilities" && echo
+    ;;
+  logs)
+    compose logs -f --tail=200 "$@"
+    ;;
+  start) compose up -d ;;
+  stop) compose stop ;;
+  restart) compose up -d && compose restart ;;
+  backup)
+    file="${1:-$APP_DIR/backups/aimap-$(date +%Y%m%d-%H%M%S).dump}"
+    mkdir -p "$(dirname "$file")"
+    compose exec -T db pg_dump -U aimap -Fc aimap > "$file"
+    echo "backup written: $file ($(du -h "$file" | cut -f1))"
+    ;;
+  restore)
+    file="${1:?usage: aimapctl restore <file>}"
+    [[ -f "$file" ]] || { echo "no such file: $file" >&2; exit 1; }
+    read -r -p "Replace ALL current drawings with $file? [y/N] " answer
+    [[ "$answer" =~ ^[Yy] ]] || exit 1
+    compose stop api
+    compose exec -T db pg_restore -U aimap -d aimap --clean --if-exists < "$file"
+    compose start api
+    echo "restored from $file"
+    ;;
+  version)
+    ls -1 "$APP_DIR"/installed-*.json 2>/dev/null | sed 's#.*/installed-##; s#\.json$##' || echo "unknown"
+    echo "running image version: ${AIMAP_VERSION:-latest}"
+    ;;
+  uninstall)
+    if [[ "${1:-}" == --purge ]]; then
+      read -r -p "Delete containers, ALL drawings and map data in ${DATA_ROOT}? [y/N] " answer
+      [[ "$answer" =~ ^[Yy] ]] || exit 1
+      compose down -v
+      rm -rf "${DATA_ROOT:?}"
+      echo "removed containers, database volume and $DATA_ROOT"
+    else
+      compose down
+      echo "containers removed; drawings (volume) and map data kept. Use --purge to delete them."
+    fi
+    ;;
+  -h|--help|help) sed -n '2,12p' "$0" ;;
+  *) echo "unknown command: $cmd (see aimapctl help)" >&2; exit 2 ;;
+esac

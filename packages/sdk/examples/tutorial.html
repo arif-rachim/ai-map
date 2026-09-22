@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tutorial AI Map</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      --accent: #007aff; --label: #1d1d1f; --label-2: #6e6e73; --bg: #f5f5f7; --card: #ffffff; --separator: rgba(60, 60, 67, 0.16);
+      --fill: rgba(118, 118, 128, 0.12); --code: #f2f2f7; --green: #34c759;
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', system-ui, 'Segoe UI', sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --accent: #0a84ff; --label: #f5f5f7; --label-2: #a1a1a6; --bg: #000000; --card: #1c1c1e; --separator: rgba(84, 84, 88, 0.6); --fill: rgba(118, 118, 128, 0.24); --code: #2c2c2e; --green: #30d158; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--label); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    header { padding: 56px 24px 24px; max-width: 1080px; margin: 0 auto; }
+    header h1 { font-size: 40px; letter-spacing: -0.8px; margin: 0 0 8px; }
+    header p { color: var(--label-2); font-size: 19px; margin: 0; max-width: 720px; }
+    nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-bottom: 0.5px solid var(--separator); }
+    nav div { max-width: 1080px; margin: 0 auto; padding: 10px 24px; display: flex; gap: 18px; overflow-x: auto; white-space: nowrap; }
+    nav a { color: var(--label-2); text-decoration: none; font-size: 13px; }
+    nav a:hover { color: var(--accent); }
+    main { max-width: 1080px; margin: 0 auto; padding: 8px 24px 80px; }
+    section { margin-top: 48px; scroll-margin-top: 60px; }
+    h2 { font-size: 28px; letter-spacing: -0.4px; margin: 0 0 6px; }
+    h3 { font-size: 19px; margin: 28px 0 8px; }
+    .lead { color: var(--label-2); margin: 0 0 16px; }
+    .card { background: var(--card); border-radius: 18px; padding: 20px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+    .choice h4 { margin: 0 0 4px; font-size: 16px; }
+    .choice p { margin: 0; color: var(--label-2); font-size: 14px; }
+    .choice .tag { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 0.5px solid var(--separator); vertical-align: top; }
+    th { color: var(--label-2); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+    tr:last-child td { border-bottom: 0; }
+    code { font: 13px ui-monospace, 'SF Mono', Menlo, Consolas, monospace; background: var(--code); padding: 1px 5px; border-radius: 5px; }
+    pre { position: relative; background: var(--code); border-radius: 14px; padding: 16px 18px; overflow: auto; font: 13px/1.55 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; margin: 12px 0; }
+    pre code { background: none; padding: 0; }
+    .copy { position: absolute; top: 8px; right: 8px; border: 0; border-radius: 999px; background: var(--fill); color: var(--label); font-size: 12px; padding: 4px 10px; cursor: pointer; }
+    .copy:hover { color: var(--accent); }
+    .builder { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+    @media (max-width: 860px) { .builder { grid-template-columns: 1fr; } }
+    .form label { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--separator); font-size: 14px; }
+    .form label:last-child { border-bottom: 0; }
+    .form select, .form input[type=text] { font: inherit; font-size: 13px; border: 0; background: var(--fill); color: var(--label); border-radius: 8px; padding: 5px 8px; max-width: 170px; }
+    .form fieldset { border: 0; margin: 0 0 12px; padding: 0; }
+    .form legend { font-size: 12px; font-weight: 600; color: var(--label-2); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; }
+    .chips label { border: 0; padding: 0; }
+    .chips input { display: none; }
+    .chips span { display: inline-block; padding: 4px 10px; border-radius: 999px; background: var(--fill); font-size: 12px; cursor: pointer; user-select: none; }
+    .chips input:checked + span { background: var(--accent); color: #fff; }
+    .preview { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .preview iframe { width: 100%; height: 520px; border: 0; border-radius: 14px; background: var(--fill); }
+    .url { font: 12px ui-monospace, Menlo, monospace; word-break: break-all; background: var(--code); padding: 10px 12px; border-radius: 10px; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .buttons button { border: 0; border-radius: 999px; background: var(--fill); color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .buttons button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+    .playground { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+    @media (max-width: 960px) { .playground { grid-template-columns: 1fr; } }
+    #pg-map { height: 520px; border-radius: 14px; overflow: hidden; background: var(--fill); }
+    #pg-code { min-height: 150px; margin: 0; }
+    #pg-log { font: 12px ui-monospace, Menlo, monospace; height: 180px; overflow: auto; background: var(--code); border-radius: 12px; padding: 10px; white-space: pre-wrap; }
+    .note { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; color: var(--label-2); margin: 12px 0; }
+    .ok { color: var(--green); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Memakai AI Map di aplikasi lain</h1>
+    <p>Panduan untuk menampilkan peta lewat iframe tanpa coding, dan untuk developer JavaScript yang ingin mengendalikan peta dari kode. Semua contoh berjalan offline di server ini: <strong id="origin"></strong>.</p>
+  </header>
+  <nav>
+    <div>
+      <a href="#pilih">Memilih cara</a><a href="#a">A. Iframe (tanpa coding)</a><a href="#builder">Pembuat URL</a><a href="#resep">Resep</a>
+      <a href="#b">B. JavaScript</a><a href="#playground">Playground</a><a href="#maplibre">MapLibre sendiri</a><a href="#backend">Backend</a><a href="#masalah">Masalah umum</a>
+    </div>
+  </nav>
+  <main>
+    <section id="pilih">
+      <h2>Memilih cara</h2>
+      <p class="lead">Mulai dari yang paling sederhana yang memenuhi kebutuhan Anda.</p>
+      <div class="grid">
+        <div class="card choice"><h4>Iframe + parameter URL</h4><p>Tampilkan peta di dashboard atau portal. Atur posisi, tampilan, dan tombol yang muncul lewat URL.</p><span class="tag">Tanpa coding · Bagian A</span></div>
+        <div class="card choice"><h4>Iframe + SDK</h4><p>Peta yang sama, tapi dikendalikan kode: marker kendaraan, fokus ke lokasi, mendengarkan klik.</p><span class="tag">Sedikit JavaScript · B1</span></div>
+        <div class="card choice"><h4>MapLibre sendiri</h4><p>Aplikasi Anda punya peta sendiri dan ingin memakai basemap serta gambar bersama dari server ini.</p><span class="tag">JavaScript · B2</span></div>
+        <div class="card choice"><h4>REST API</h4><p>Sistem backend (Java, .NET, Python, Node) membaca dan menulis data peta.</p><span class="tag">Backend · B3</span></div>
+      </div>
+    </section>
+
+    <section id="a">
+      <h2>A. Iframe tanpa coding</h2>
+      <p class="lead">Tempelkan satu tag ini ke halaman web mana pun di jaringan kantor:</p>
+      <pre><code>&lt;iframe src="{{BASE}}/embed" style="width:100%; height:600px; border:0" title="Peta"&gt;&lt;/iframe&gt;</code></pre>
+      <p>Lalu tambahkan parameter setelah <code>?</code>, dipisah <code>&amp;</code>. Contoh: <code>/embed?center=46.67,24.71&amp;zoom=10&amp;controls=none</code>.</p>
+
+      <h3>Parameter</h3>
+      <div class="card" style="padding:4px 8px">
+        <table>
+          <tr><th>Parameter</th><th>Arti</th><th>Contoh</th></tr>
+          <tr><td><code>center</code></td><td>Titik tengah — <strong>bujur dulu, lalu lintang</strong></td><td><code>center=46.6753,24.7136</code></td></tr>
+          <tr><td><code>zoom</code>, <code>bearing</code>, <code>pitch</code></td><td>Zoom 0–19, rotasi (derajat), kemiringan 0–60</td><td><code>zoom=11&amp;pitch=45</code></td></tr>
+          <tr><td><code>theme</code></td><td><code>auto</code> (ikut sistem), <code>light</code>, <code>dark</code></td><td><code>theme=dark</code></td></tr>
+          <tr><td><code>lang</code> / <code>ui</code></td><td>Bahasa label peta / bahasa tombol: <code>en</code>, <code>ar</code></td><td><code>lang=ar&amp;ui=ar</code></td></tr>
+          <tr><td><code>unit</code> / <code>coords</code></td><td>Jarak <code>km|nm|mi</code> / koordinat <code>dd|dms|mgrs|utm</code></td><td><code>unit=nm&amp;coords=mgrs</code></td></tr>
+          <tr><td><code>hillshade</code>, <code>contours</code>, <code>terrain3d</code></td><td>Relief, kontur, 3D: <code>1</code> atau <code>0</code></td><td><code>terrain3d=1</code></td></tr>
+          <tr><td><code>controls</code></td><td>Komponen yang tampil (lihat tabel di bawah)</td><td><code>controls=search,zoom</code></td></tr>
+          <tr><td><code>readonly</code></td><td>Pengguna tidak bisa mengubah gambar</td><td><code>readonly=1</code></td></tr>
+          <tr><td><code>interactive</code></td><td><code>0</code> = peta tidak bisa digeser/zoom pengguna</td><td><code>interactive=0</code></td></tr>
+          <tr><td><code>minZoom</code>, <code>maxZoom</code>, <code>maxBounds</code></td><td>Batas zoom dan area <code>barat,selatan,timur,utara</code></td><td><code>maxBounds=34,12,60,32</code></td></tr>
+          <tr><td><code>layers</code> / <code>select</code></td><td>Hanya layer tertentu yang terlihat / buka objek tertentu</td><td><code>layers=&lt;id&gt;</code></td></tr>
+        </table>
+      </div>
+
+      <h3>Komponen (<code>controls</code>)</h3>
+      <div class="card" style="padding:4px 8px">
+        <table>
+          <tr><th>Grup</th><th>Isi (bisa disebut satu per satu)</th></tr>
+          <tr><td><code>search</code></td><td>Kotak pencarian</td></tr>
+          <tr><td><code>draw</code></td><td><code>draw.point</code> <code>draw.line</code> <code>draw.rectangle</code> <code>draw.polygon</code> <code>draw.circle</code> <code>draw.text</code> <code>draw.milsymbol</code></td></tr>
+          <tr><td><code>measure</code></td><td><code>measure.distance</code> <code>measure.area</code> <code>measure.rings</code></td></tr>
+          <tr><td><code>terrain</code></td><td><code>terrain.hillshade</code> <code>terrain.contours</code> <code>terrain.3d</code></td></tr>
+          <tr><td><code>settings</code></td><td><code>settings.unit</code> <code>settings.coords</code> <code>settings.theme</code> <code>settings.labels</code> <code>settings.ui</code></td></tr>
+          <tr><td><code>layers</code>, <code>status</code></td><td>Panel layer; pil status (koordinat, elevasi, zoom)</td></tr>
+          <tr><td><code>zoom</code>, <code>compass</code>, <code>scale</code></td><td>Tombol zoom, kompas, skala</td></tr>
+          <tr><td><code>featurePanel</code>, <code>select</code>, <code>notices</code></td><td>Panel detail objek; memilih objek dengan klik; notifikasi</td></tr>
+        </table>
+      </div>
+      <p class="note"><code>controls=none</code> = peta murni. <code>controls=-draw,-status</code> = semua kecuali itu. <code>controls=draw,-draw.milsymbol</code> = semua tool gambar kecuali simbol militer.</p>
+    </section>
+
+    <section id="builder">
+      <h2>Pembuat URL iframe</h2>
+      <p class="lead">Pilih opsi, lihat hasilnya langsung, lalu salin kodenya.</p>
+      <div class="card builder">
+        <form class="form" id="form" onsubmit="return false">
+          <fieldset>
+            <legend>Posisi</legend>
+            <label>Lokasi <select name="place">
+              <option value="46.6753,24.7136|11">Riyadh</option><option value="55.2708,25.2048|12">Dubai</option><option value="31.2357,30.0444|11">Kairo</option>
+              <option value="42.5053,18.2164|11">Pegunungan Asir</option><option value="42,25|4">Seluruh region</option>
+            </select></label>
+            <label>Kemiringan (pitch) <select name="pitch"><option value="">0</option><option>45</option><option>60</option></select></label>
+          </fieldset>
+          <fieldset>
+            <legend>Tampilan</legend>
+            <label>Tema <select name="theme"><option value="">Otomatis</option><option value="light">Terang</option><option value="dark">Gelap</option></select></label>
+            <label>Label peta <select name="lang"><option value="">English</option><option value="ar">العربية</option></select></label>
+            <label>Bahasa tombol <select name="ui"><option value="">English</option><option value="ar">العربية</option></select></label>
+            <label>Satuan <select name="unit"><option value="">km</option><option value="nm">NM</option><option value="mi">mi</option></select></label>
+            <label>Relief 3D <select name="terrain3d"><option value="">Tidak</option><option value="1">Ya</option></select></label>
+          </fieldset>
+          <fieldset>
+            <legend>Komponen</legend>
+            <div class="chips" id="chips"></div>
+            <label>Baca saja <select name="readonly"><option value="">Tidak</option><option value="1">Ya</option></select></label>
+            <label>Kunci peta <select name="interactive"><option value="">Tidak</option><option value="0">Ya</option></select></label>
+          </fieldset>
+        </form>
+        <div class="preview">
+          <div class="url" id="url"></div>
+          <pre><code id="snippet"></code></pre>
+          <iframe id="frame" title="Pratinjau peta"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="resep">
+      <h2>Resep siap pakai</h2>
+      <div class="card" style="padding:4px 8px">
+        <table>
+          <tr><th>Kebutuhan</th><th>URL</th></tr>
+          <tr><td>Peta murni untuk dashboard</td><td><code>/embed?controls=none&amp;center=46.67,24.71&amp;zoom=10</code></td></tr>
+          <tr><td>Monitoring baca saja</td><td><code>/embed?controls=search,layers,zoom,status,featurePanel,select&amp;readonly=1</code></td></tr>
+          <tr><td>Layar TV / kios (terkunci, gelap, 3D)</td><td><code>/embed?controls=none&amp;interactive=0&amp;theme=dark&amp;terrain3d=1&amp;pitch=50&amp;center=42.5,18.2&amp;zoom=10</code></td></tr>
+          <tr><td>Tim lapangan (tanpa simbol militer &amp; pengaturan, MGRS)</td><td><code>/embed?controls=-draw.milsymbol,-settings&amp;coords=mgrs</code></td></tr>
+          <tr><td>Hanya wilayah GCC</td><td><code>/embed?maxBounds=34,12,60,32&amp;minZoom=5&amp;center=48,24&amp;zoom=5</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="b">
+      <h2>B. Developer JavaScript</h2>
+      <h3>B0. Memuat SDK</h3>
+      <p>SDK disajikan server ini — tidak perlu npm atau internet.</p>
+      <pre><code>&lt;script src="{{BASE}}/sdk/aimap-sdk.js"&gt;&lt;/script&gt;   &lt;!-- global: AiMap --&gt;
+
+// atau sebagai ES module
+import { AiMapEmbed, AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs';</code></pre>
+      <p>Tipe TypeScript: <a href="/sdk/aimap-sdk.d.ts"><code>/sdk/aimap-sdk.d.ts</code></a> · Referensi REST: <a href="/api/v1/docs/">/api/v1/docs</a></p>
+
+      <h3>B1. Membuat peta embed</h3>
+      <pre><code>&lt;div id="peta" style="height:600px"&gt;&lt;/div&gt;
+&lt;script src="{{BASE}}/sdk/aimap-sdk.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  const map = AiMap.AiMapEmbed.create('#peta', {
+    baseUrl: '{{BASE}}',
+    center: [46.6753, 24.7136], zoom: 11,
+    controls: ['search', 'zoom', 'layers'],   // sama dengan parameter URL
+    readonly: true,
+  });
+  await map.ready;
+  map.on('click', (e) =&gt; console.log('klik', e.lat, e.lon, e.markerId, e.featureId));
+&lt;/script&gt;</code></pre>
+
+      <div class="grid">
+        <div class="card" style="padding:4px 8px">
+          <table>
+            <tr><th>Perintah</th><th>Contoh</th></tr>
+            <tr><td>Pindah / zoom</td><td><code>setView({center, zoom})</code> <code>fitBounds([w,s,e,n])</code></td></tr>
+            <tr><td>Cari</td><td><code>search('Riyadh')</code></td></tr>
+            <tr><td>Marker sementara</td><td><code>setMarkers([...], replace)</code> <code>removeMarkers()</code></td></tr>
+            <tr><td>Objek bersama</td><td><code>addFeature</code> <code>updateFeature</code> <code>deleteFeature</code> <code>selectFeature</code></td></tr>
+            <tr><td>Layer</td><td><code>listLayers</code> <code>setLayerVisible</code> <code>setActiveLayer</code></td></tr>
+            <tr><td>Tool &amp; tampilan</td><td><code>setTool('measure:distance')</code> <code>setOptions({theme})</code></td></tr>
+            <tr><td>Komponen &amp; kunci</td><td><code>setControls(['none'])</code> <code>setInteraction({interactive:false})</code></td></tr>
+          </table>
+        </div>
+        <div class="card" style="padding:4px 8px">
+          <table>
+            <tr><th>Event</th><th>Kapan</th></tr>
+            <tr><td><code>ready</code></td><td>Peta selesai dimuat</td></tr>
+            <tr><td><code>click</code></td><td>Peta/marker/objek diklik</td></tr>
+            <tr><td><code>moveend</code></td><td>Peta selesai digeser</td></tr>
+            <tr><td><code>select</code></td><td>Objek dipilih/dilepas</td></tr>
+            <tr><td><code>featureCreated/Updated/Deleted</code></td><td>Objek berubah, termasuk oleh user lain</td></tr>
+            <tr><td><code>measure</code></td><td>Hasil pengukuran berubah</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="playground">
+      <h2>Playground</h2>
+      <p class="lead">Klik tombol untuk menjalankan perintah pada peta di bawah. Kode yang dijalankan tampil di samping.</p>
+      <div class="card playground">
+        <div>
+          <div class="buttons" id="pg-buttons"></div>
+          <div id="pg-map"></div>
+        </div>
+        <div>
+          <pre id="pg-code"><code>// pilih tombol di kiri</code></pre>
+          <h4 style="margin:12px 0 6px">Event</h4>
+          <div id="pg-log"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="maplibre">
+      <h2>B2. Peta MapLibre milik sendiri</h2>
+      <p class="lead">Basemap, terrain, dan gambar bersama dari server ini di peta aplikasi Anda. Contoh lengkap: <a href="maplibre.html">maplibre.html</a>.</p>
+      <pre><code>&lt;link rel="stylesheet" href="{{BASE}}/vendor/maplibre/maplibre-gl.css" /&gt;
+&lt;div id="peta" style="height:600px"&gt;&lt;/div&gt;
+&lt;script type="module"&gt;
+  import * as maplibregl from '{{BASE}}/vendor/maplibre/maplibre-gl.mjs';
+  import { AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs';
+
+  const client = new AiMapClient('{{BASE}}');
+  const map = new maplibregl.Map({
+    container: 'peta',
+    style: client.styleUrl({ theme: 'light', lang: 'en', terrain: 'hillshade' }),   // none | hillshade | 3d
+    center: [46.67, 24.71], zoom: 9,
+  });
+  map.on('load', async () =&gt; {
+    const gambar = await addDrawings(map, client);   // live, sama persis dengan aplikasi utama
+    map.on('click', gambar.layerIds, (e) =&gt; alert(e.features[0].properties.name));
+  });
+  map.on('click', async (e) =&gt; console.log(await client.elevation(e.lngLat.lng, e.lngLat.lat), 'm'));
+&lt;/script&gt;</code></pre>
+    </section>
+
+    <section id="backend">
+      <h2>B3. Backend dan bahasa lain</h2>
+      <pre><code>// Node.js 18+ — salin {{BASE}}/sdk/aimap-sdk.mjs ke proyek Anda
+import { AiMapClient } from './aimap-sdk.mjs';
+const client = new AiMapClient('{{BASE}}');
+const [layer] = await client.layers();
+await client.createFeature({ layerId: layer.id, kind: 'point', name: 'Checkpoint 4',
+  geometry: { type: 'Point', coordinates: [46.7, 24.7] } });
+client.subscribe((m) =&gt; console.log(m.type), { onOpen: () =&gt; console.log('terhubung') });</code></pre>
+      <pre><code># Bahasa apa pun lewat HTTP
+curl '{{BASE}}/api/v1/search?q=Riyadh&amp;limit=5'
+curl '{{BASE}}/api/v1/elevation?lon=42.5053&amp;lat=18.2164'
+curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
+      <p>Referensi lengkap dan pembuat client otomatis (Java, .NET, Python): <a href="/api/v1/docs/">/api/v1/docs</a> · <a href="/api/v1/openapi.json">openapi.json</a> · GIS: <a href="/api/v1/ogc">/api/v1/ogc</a></p>
+    </section>
+
+    <section id="masalah">
+      <h2>Masalah umum</h2>
+      <div class="card" style="padding:4px 8px">
+        <table>
+          <tr><th>Gejala</th><th>Solusi</th></tr>
+          <tr><td>Iframe kosong</td><td>Buka <a href="/api/v1/health">/api/v1/health</a>; di server jalankan <code>aimapctl status</code></td></tr>
+          <tr><td><code>map.ready</code> tidak selesai</td><td><code>baseUrl</code> harus sama persis dengan alamat server (skema, host, port)</td></tr>
+          <tr><td>"Map is not ready yet"</td><td>Jalankan perintah setelah <code>await map.ready</code></td></tr>
+          <tr><td>"Unknown controls: …"</td><td>Periksa nama komponen di tabel <a href="#a">controls</a></td></tr>
+          <tr><td>"Version conflict"</td><td>Objek diubah user lain; ambil ulang lalu ulangi</td></tr>
+          <tr><td>Halaman HTTPS memblokir peta HTTP</td><td>Gunakan skema yang sama untuk halaman dan server peta</td></tr>
+          <tr><td>Marker hilang setelah reload</td><td><code>setMarkers</code> memang sementara; untuk data permanen pakai <code>addFeature</code></td></tr>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/sdk/aimap-sdk.js"></script>
+  <script>
+    const BASE = location.origin;
+    document.getElementById('origin').textContent = BASE;
+
+    // Fill in this server's address in code samples and add copy buttons.
+    for (const code of document.querySelectorAll('pre code')) code.innerHTML = code.innerHTML.replaceAll('{{BASE}}', BASE);
+    for (const pre of document.querySelectorAll('pre:not(#pg-code)')) {
+      const b = document.createElement('button');
+      b.className = 'copy';
+      b.textContent = 'Salin';
+      b.onclick = async () => {
+        const text = pre.querySelector('code').textContent;
+        try { await navigator.clipboard.writeText(text); } catch { const r = document.createRange(); r.selectNodeContents(pre); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); }
+        b.textContent = 'Tersalin'; setTimeout(() => (b.textContent = 'Salin'), 1500);
+      };
+      pre.append(b);
+    }
+
+    // ---- URL builder ----------------------------------------------------------------------------
+    const CHIPS = [['search', 'Cari'], ['draw', 'Gambar'], ['measure', 'Ukur'], ['layers', 'Layer'], ['terrain', 'Terrain'], ['settings', 'Pengaturan'], ['status', 'Status'], ['zoom', 'Zoom'], ['compass', 'Kompas'], ['scale', 'Skala'], ['featurePanel', 'Panel objek'], ['select', 'Pilih objek']];
+    const chips = document.getElementById('chips');
+    for (const [value, label] of CHIPS) chips.insertAdjacentHTML('beforeend', `<label><input type="checkbox" name="controls" value="${value}" checked /><span>${label}</span></label>`);
+    const form = document.getElementById('form');
+    let timer;
+    function build() {
+      const f = new FormData(form);
+      const [center, zoom] = f.get('place').split('|');
+      const params = { center: center.split(',').map(Number), zoom: Number(zoom) };
+      for (const k of ['pitch', 'theme', 'lang', 'ui', 'unit']) if (f.get(k)) params[k] = k === 'pitch' ? Number(f.get(k)) : f.get(k);
+      if (f.get('terrain3d')) params.terrain3d = true;
+      if (f.get('readonly')) params.readonly = true;
+      if (f.get('interactive')) params.interactive = false;
+      const selected = f.getAll('controls');
+      if (selected.length !== CHIPS.length) params.controls = [...selected, 'notices'];
+      const url = AiMap.buildEmbedUrl(BASE, params);
+      document.getElementById('url').textContent = url;
+      document.getElementById('snippet').textContent = `<iframe src="${url}" style="width:100%; height:600px; border:0" title="Peta"></iframe>`;
+      clearTimeout(timer);
+      timer = setTimeout(() => { const frame = document.getElementById('frame'); if (frame.src !== url) frame.src = url; }, 400);
+    }
+    form.addEventListener('input', build);
+    build();
+
+    // ---- Playground -------------------------------------------------------------------------------
+    const log = (text) => { const el = document.getElementById('pg-log'); el.textContent = `${new Date().toLocaleTimeString()}  ${text}\n` + el.textContent; };
+    let map;
+    function startPlayground() {
+      if (map) return;
+      map = AiMap.AiMapEmbed.create('#pg-map', { baseUrl: BASE, center: [46.6753, 24.7136], zoom: 11, controls: ['zoom', 'layers', 'featurePanel', 'select'] });
+      map.ready.then((v) => log(`ready zoom=${v.zoom.toFixed(1)}`));
+      for (const ev of ['click', 'select', 'featureCreated', 'featureUpdated', 'featureDeleted', 'measure']) map.on(ev, (d) => log(`${ev} ${JSON.stringify(d).slice(0, 120)}`));
+    }
+    let savedId = null;
+    let step = 0;
+    const DEMOS = [
+      ['Ke Dubai', `await map.setView({ center: [55.2708, 25.2048], zoom: 12 });`, () => map.setView({ center: [55.2708, 25.2048], zoom: 12 })],
+      ['Ke Riyadh', `await map.setView({ center: [46.6753, 24.7136], zoom: 11 });`, () => map.setView({ center: [46.6753, 24.7136], zoom: 11 })],
+      ['Marker kendaraan', `await map.setMarkers([
+  { id: 'hq', lon: 46.68, lat: 24.72, label: 'HQ', sidc: '10031000001211000000' },
+  { id: 'truk-7', lon: 46.64, lat: 24.69, label: 'Truk 7', color: '#34c759' },
+]);`, () => map.setMarkers([{ id: 'hq', lon: 46.68, lat: 24.72, label: 'HQ', sidc: '10031000001211000000' }, { id: 'truk-7', lon: 46.64, lat: 24.69, label: 'Truk 7', color: '#34c759' }])],
+      ['Gerakkan truk', `// panggil berkala dengan posisi terbaru
+await map.setMarkers([{ id: 'truk-7', lon, lat, label: 'Truk 7', color: '#34c759' }]);`, () => { step += 1; return map.setMarkers([{ id: 'truk-7', lon: 46.64 + step * 0.01, lat: 24.69 + step * 0.004, label: 'Truk 7', color: '#34c759' }]); }],
+      ['Hapus marker', `await map.removeMarkers();`, () => map.removeMarkers()],
+      ['Simpan pin bersama', `const v = await map.getView();
+const pin = await map.addFeature({
+  kind: 'point', name: 'Contoh tutorial',
+  geometry: { type: 'Point', coordinates: v.center },
+});
+await map.selectFeature(pin.id);`, async () => { const v = await map.getView(); const f = await map.addFeature({ kind: 'point', name: 'Contoh tutorial', geometry: { type: 'Point', coordinates: v.center } }); savedId = f.id; await map.selectFeature(f.id); }],
+      ['Hapus pin itu', `await map.deleteFeature(pin.id);`, async () => { if (!savedId) return log('simpan pin dulu'); await map.deleteFeature(savedId); savedId = null; }],
+      ['Mulai ukur jarak', `await map.setTool('measure:distance');   // klik di peta, dobel-klik untuk selesai`, () => map.setTool('measure:distance')],
+      ['Gelap + 3D', `await map.setOptions({ theme: 'dark', terrain3d: true });`, () => map.setOptions({ theme: 'dark', terrain3d: true })],
+      ['Peta murni + kunci', `await map.setControls(['none']);
+await map.setInteraction({ interactive: false });`, async () => { await map.setControls(['none']); await map.setInteraction({ interactive: false }); }],
+      ['Kembalikan', `await map.setControls(['zoom', 'layers', 'featurePanel', 'select']);
+await map.setInteraction({ interactive: true });
+await map.setOptions({ theme: 'auto', terrain3d: false });
+await map.setTool('none');`, async () => { await map.setControls(['zoom', 'layers', 'featurePanel', 'select']); await map.setInteraction({ interactive: true }); await map.setOptions({ theme: 'auto', terrain3d: false }); await map.setTool('none'); }],
+    ];
+    const buttons = document.getElementById('pg-buttons');
+    for (const [label, code, run] of DEMOS) {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.onclick = async () => {
+        startPlayground();
+        document.querySelector('#pg-code code').textContent = code;
+        try { await map.ready; await run(); log(`✓ ${label}`); } catch (e) { log(`✗ ${label}: ${e.message}`); }
+      };
+      buttons.append(b);
+    }
+    // Load the playground map when it scrolls into view.
+    new IntersectionObserver((entries, obs) => { if (entries.some((e) => e.isIntersecting)) { startPlayground(); obs.disconnect(); } }).observe(document.getElementById('pg-map'));
+  </script>
+</body>
+</html>

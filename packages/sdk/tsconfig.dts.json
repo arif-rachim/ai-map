@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "node10",
+    "baseUrl": ".",
+    "paths": {
+      "@ai-map/shared": ["../shared/src/index.ts"],
+      "@ai-map/shared/*": ["../shared/src/*"]
+    }
+  }
+}

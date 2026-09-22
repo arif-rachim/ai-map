@@ -1,0 +1,37 @@
+{
+  "name": "@ai-map/api",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --external:pg-native --external:sharp --external:@fastify/swagger-ui \"--banner:js=import { createRequire as __aimapCreateRequire } from 'node:module'; const require = __aimapCreateRequire(import.meta.url);\"",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-map/shared": "*",
+    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger-ui": "^6.1.1",
+    "@fastify/websocket": "^11.3.0",
+    "csv-parse": "^7.0.2",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.0",
+    "pmtiles": "^4.5.0",
+    "sharp": "^0.35.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/ws": "^8.18.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.13",
+    "vitest": "^5.0.1"
+  },
+  "runtimeExternals": [
+    "sharp",
+    "@fastify/swagger-ui"
+  ]
+}

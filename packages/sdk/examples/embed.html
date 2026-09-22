@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Map embed example</title>
+  <link rel="icon" href="data:," />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; display: grid; grid-template-columns: 1fr 320px; height: 100vh; }
+    #map { min-height: 0; }
+    aside { padding: 12px; border-left: 1px solid #e5e7eb; overflow: auto; font-size: 14px; }
+    button { display: block; width: 100%; margin: 4px 0; padding: 6px 8px; text-align: left; cursor: pointer; }
+    #log { font: 12px ui-monospace, monospace; white-space: pre-wrap; background: #f9fafb; border: 1px solid #e5e7eb; padding: 8px; height: 280px; overflow: auto; }
+    h3 { margin: 14px 0 4px; font-size: 13px; color: #6b7280; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <aside>
+    <h3>Commands</h3>
+    <button id="fly">Fly to Riyadh</button>
+    <button id="markers">Show 3 host markers (not saved)</button>
+    <button id="move">Move vehicle marker</button>
+    <button id="clear">Remove host markers</button>
+    <button id="add">Save a pin at the map center (shared)</button>
+    <button id="measure">Start distance measurement</button>
+    <button id="dark">Dark theme + Arabic labels</button>
+    <h3>Events</h3>
+    <div id="log"></div>
+  </aside>
+
+  <script src="/sdk/aimap-sdk.js"></script>
+  <script>
+    const log = (name, data) => {
+      const el = document.getElementById('log');
+      el.textContent = `${name} ${JSON.stringify(data).slice(0, 160)}\n` + el.textContent;
+    };
+
+    const map = AiMap.AiMapEmbed.create('#map', {
+      baseUrl: location.origin,
+      center: [46.6753, 24.7136],
+      zoom: 9,
+      controls: ['search', 'measure', 'layers', 'status'],
+    });
+
+    map.ready.then((view) => log('ready', view));
+    for (const ev of ['click', 'select', 'featureCreated', 'featureUpdated', 'featureDeleted', 'measure']) map.on(ev, (d) => log(ev, d));
+    map.on('moveend', (v) => log('moveend', { zoom: +v.zoom.toFixed(2) }));
+
+    const run = (id, fn) => (document.getElementById(id).onclick = () => fn().catch((e) => log('error', e.message)));
+    run('fly', () => map.setView({ center: [46.6753, 24.7136], zoom: 12 }));
+    run('markers', () =>
+      map.setMarkers([
+        { id: 'hq', lon: 46.68, lat: 24.72, label: 'HQ', sidc: '10031000001211000000' },
+        { id: 'vehicle', lon: 46.64, lat: 24.69, label: 'Vehicle 7', color: '#16a34a' },
+        { id: 'contact', lon: 46.72, lat: 24.75, label: 'Contact', sidc: '10061000001211000000' },
+      ]),
+    );
+    let step = 0;
+    run('move', () => map.setMarkers([{ id: 'vehicle', lon: 46.64 + (++step) * 0.01, lat: 24.69 + step * 0.004, label: `Vehicle 7 (${step})`, color: '#16a34a' }]));
+    run('clear', () => map.removeMarkers());
+    run('add', async () => {
+      const view = await map.getView();
+      const [lon, lat] = view.center;
+      const f = await map.addFeature({
+        kind: 'point',
+        geometry: { type: 'Point', coordinates: [lon, lat] },
+        name: 'Added from host page',
+      });
+      await map.selectFeature(f.id);
+    });
+    run('measure', () => map.setTool('measure:distance'));
+    run('dark', () => map.setOptions({ theme: 'dark', labelLang: 'ar' }));
+  </script>
+</body>
+</html>

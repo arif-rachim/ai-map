@@ -1,0 +1,25 @@
+FROM node:24-alpine AS build
+WORKDIR /src
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/sdk/package.json packages/sdk/
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY data-pipeline/package.json data-pipeline/
+RUN npm ci --ignore-scripts && npm rebuild esbuild
+COPY packages/shared packages/shared
+COPY apps/api apps/api
+# Packages that cannot be bundled (native binaries / static assets) are installed at the exact versions used here.
+RUN npm run build -w @ai-map/api \
+  && node -e "const ext=require('./apps/api/package.json').runtimeExternals; const deps=Object.fromEntries(ext.map((n)=>[n, require('./node_modules/'+n+'/package.json').version])); require('fs').writeFileSync('/src/runtime-package.json', JSON.stringify({type:'module',private:true,dependencies:deps}))"
+
+FROM node:24-alpine
+ENV NODE_ENV=production PORT=3000 DATA_DIR=/data MIGRATIONS_DIR=/app/migrations
+WORKDIR /app
+COPY --from=build /src/runtime-package.json ./package.json
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+COPY --from=build /src/apps/api/dist/index.js ./index.js
+COPY apps/api/migrations ./migrations
+USER node
+EXPOSE 3000
+CMD ["node", "index.js"]

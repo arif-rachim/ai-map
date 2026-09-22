@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Map with your own MapLibre map</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="/vendor/maplibre/maplibre-gl.css" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #map { position: absolute; inset: 0; }
+    .box { position: absolute; top: 10px; left: 10px; z-index: 1; background: #fff; padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgb(0 0 0 / 0.15); width: 300px; font-size: 13px; }
+    .box input { width: 100%; box-sizing: border-box; padding: 6px; }
+    .box ul { list-style: none; padding: 0; margin: 6px 0 0; max-height: 220px; overflow: auto; }
+    .box li { padding: 4px; cursor: pointer; border-radius: 4px; }
+    .box li:hover { background: #f3f4f6; }
+    #info { margin-top: 6px; color: #374151; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="box">
+    <input id="q" placeholder="Search city, airport, coordinates…" />
+    <ul id="results"></ul>
+    <div id="info">Click the map for elevation. Shared drawings update live.</div>
+  </div>
+
+  <script type="module">
+    import * as maplibregl from '/vendor/maplibre/maplibre-gl.mjs';
+    import { AiMapClient, addDrawings } from '/sdk/aimap-sdk.mjs';
+
+    const client = new AiMapClient(location.origin);
+    const caps = await client.capabilities();
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: client.styleUrl({ theme: 'light', lang: 'en', terrain: caps.terrain ? 'hillshade' : 'none' }),
+      center: [46.6753, 24.7136],
+      zoom: 5,
+    });
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    map.on('load', async () => {
+      const drawings = await addDrawings(map, client, { onChange: (fs) => console.log('drawings', fs.length) });
+      map.on('click', drawings.layerIds, (e) => {
+        const f = e.features[0];
+        new maplibregl.Popup().setLngLat(e.lngLat).setText(`${f.properties.name || f.properties.kind}`).addTo(map);
+      });
+    });
+
+    map.on('click', async (e) => {
+      if (!caps.terrain) return;
+      const ele = await client.elevation(e.lngLat.lng, e.lngLat.lat);
+      document.getElementById('info').textContent = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)} — elevation ${ele === null ? 'n/a' : Math.round(ele) + ' m'}`;
+    });
+
+    let timer;
+    document.getElementById('q').addEventListener('input', (ev) => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const list = document.getElementById('results');
+        list.replaceChildren();
+        if (ev.target.value.trim().length < 2) return;
+        for (const r of await client.search(ev.target.value, { limit: 8 })) {
+          const li = document.createElement('li');
+          li.textContent = `${r.name} — ${r.type}${r.detail ? ' · ' + r.detail : ''}`;
+          li.onclick = () => map.flyTo({ center: [r.lon, r.lat], zoom: r.type === 'airport' ? 13 : 11 });
+          list.append(li);
+        }
+      }, 250);
+    });
+  </script>
+</body>
+</html>

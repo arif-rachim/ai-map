@@ -1,0 +1,6 @@
+**/node_modules
+**/dist
+dist-data
+work
+bundles
+.git

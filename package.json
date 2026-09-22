@@ -1,0 +1,25 @@
+{
+  "name": "ai-map",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "data-pipeline"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @ai-map/api",
+    "dev:web": "npm run dev -w @ai-map/web",
+    "build": "npm run build -w @ai-map/sdk && npm run build -w @ai-map/api && npm run build -w @ai-map/web",
+    "test": "npm test -w @ai-map/shared && npm test -w @ai-map/web && npm test -w @ai-map/sdk && npm test -w @ai-map/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "typescript": "~5.9.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

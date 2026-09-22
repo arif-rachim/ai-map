@@ -1,0 +1,32 @@
+AI Map — installation bundle {{TYPE}} {{VERSION}}
+====================================================
+
+Requirements on the server
+  - Ubuntu 22.04 / 24.04 (x86_64) with Docker Engine installed and running
+  - Docker Compose v2 (if missing, the installer adds the copy included in bin/)
+  - Recommended: 8+ CPU cores, 32 GB RAM, SSD with free space shown by the installer
+  - No internet access needed
+
+Install (or update an existing installation)
+  1. Copy this whole folder to the server (e.g. from the USB disk):
+       cp -r /media/usb/aimap-{{TYPE}}-{{VERSION}} /opt/aimap-bundles/
+  2. Run the installer:
+       cd /opt/aimap-bundles/aimap-{{TYPE}}-{{VERSION}}
+       sudo ./install.sh
+     Options: --port 8080  --app-dir /opt/aimap  --data-root /data/aimap  --public-url http://maps.local  --yes
+  3. Open the address printed at the end, e.g. http://<server-ip>/
+
+What the installer does
+  checks the server -> verifies checksums -> loads Docker images -> writes /opt/aimap/.env
+  (random database password, kept on re-runs) -> copies map data -> starts the services
+  -> waits until they are healthy -> prints the URLs.
+
+After installation
+  aimapctl status          services and health
+  aimapctl logs api        follow logs of one service
+  aimapctl backup          save drawings to /opt/aimap/backups/
+  aimapctl restore FILE    restore drawings
+  aimapctl restart         apply .env changes
+
+Drawings are stored in the Docker volume "aimap_pgdata" and are kept when installing updates.
+The bundle folder can be deleted after a successful installation.

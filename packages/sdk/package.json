@@ -1,0 +1,31 @@
+{
+  "name": "@ai-map/sdk",
+  "version": "1.0.0",
+  "description": "Client SDK for the AI Map offline map server: REST/WebSocket client, iframe embed controller, MapLibre drawings layer.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "vite build && dts-bundle-generator --project tsconfig.dts.json --no-check --export-referenced-types --inline-declare-global --external-inlines @ai-map/shared -o dist/aimap-sdk.d.ts src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-map/shared": "*",
+    "milsymbol": "^3.0.4"
+  },
+  "peerDependencies": {
+    "maplibre-gl": ">=4"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "dts-bundle-generator": "^9.5.1",
+    "happy-dom": "^20.0.0",
+    "maplibre-gl": "^6.10.0",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}

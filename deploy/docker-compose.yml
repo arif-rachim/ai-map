@@ -1,0 +1,83 @@
+name: aimap
+
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aimap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aimap}
+      POSTGRES_DB: aimap
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aimap"]
+      interval: 5s
+      retries: 30
+    networks: [internal]
+
+  api:
+    image: aimap-api:${AIMAP_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://aimap:${POSTGRES_PASSWORD:-aimap}@db:5432/aimap
+      PHOTON_URL: http://photon:2322
+      DATA_DIR: /data
+      # Optional fixed base URL for links in TileJSON / styles / OGC responses (default: derived from the request).
+      PUBLIC_URL: ${PUBLIC_URL:-}
+    volumes:
+      - ${DATA_ROOT:-/opt/aimap/data}:/data:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+    networks: [internal]
+
+  photon:
+    image: eclipse-temurin:21-jre
+    restart: unless-stopped
+    user: "${AIMAP_UID:-1000}:${AIMAP_GID:-1000}"
+    command: >
+      java -Xmx${PHOTON_HEAP:-4g} -jar /data/photon.jar serve
+      -data-dir /data/photon-db -listen-ip 0.0.0.0 -cors-any
+    volumes:
+      - ${DATA_ROOT:-/opt/aimap/data}/photon:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:2322/status"]
+      interval: 15s
+      timeout: 5s
+      # Opening a large geocoder index takes a while on first start.
+      start_period: 180s
+      retries: 10
+    networks: [internal]
+
+  web:
+    image: aimap-web:${AIMAP_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ${DATA_ROOT:-/opt/aimap/data}:/data:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [internal, public]
+
+volumes:
+  pgdata:
+
+networks:
+  # No outbound access for backend services; only "web" publishes a port.
+  internal:
+    internal: true
+  public:

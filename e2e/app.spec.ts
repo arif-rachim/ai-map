@@ -122,7 +122,7 @@ test.describe('full app', () => {
         // storage unavailable
       }
     });
-    await page.goto('/');
+    await page.goto('/map');
     // Selected as early as possible, then never touched again: the map must pick it up once loaded.
     await page.locator('[data-control="draw.point"]').click();
     await waitMapReady(page);

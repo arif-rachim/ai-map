@@ -73,7 +73,7 @@ export async function serviceRoutes(app: FastifyInstance, ctx: AppContext) {
     if (!coord && q.q.trim().length >= 2) {
       const [airports, places] = await Promise.all([
         q.types.has('airport') ? searchAirports(q.q, Math.min(5, q.limit)) : [],
-        q.types.has('place') ? photonSearch(q.q, q.lang, q.limit) : [],
+        q.types.has('place') ? photonSearch(q.q, 'en', q.limit) : [],
       ]);
       const airportItems: SearchResultItem[] = airports.map((a) => ({
         type: 'airport',

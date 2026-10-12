@@ -13,7 +13,7 @@ AI Map is a self-hosted web map for closed, airgapped networks, where online map
 - Shared drawing layers stored in PostGIS; changes are broadcast to all open clients over WebSocket
 - MIL-STD-2525D/E symbols rendered with milsymbol
 - Import GeoJSON into a layer; export a layer as GeoJSON or KML
-- English and Arabic UI with right-to-left layout
+- English and Arabic UI with right-to-left layout (map labels and search results are always in English)
 - Integration: iframe embed with a postMessage SDK, REST API with OpenAPI docs, WebSocket events, TileJSON/vector tiles and OGC API - Features
 - Deployment as one self-contained bundle installed with `sudo ./install.sh`; update bundles for app code or map data only
 
@@ -86,4 +86,6 @@ One self-contained bundle, one command on the airgapped Ubuntu server: `sudo ./i
 
 ## Using the map from other applications
 
-Tutorial for iframe users and JavaScript developers (Bahasa Indonesia): [docs/TUTORIAL.md](docs/TUTORIAL.md), interactive at `/sdk/examples/tutorial.html`.
+Tutorial for iframe users and JavaScript developers: [docs/TUTORIAL.md](docs/TUTORIAL.md), interactive at `/sdk/examples/tutorial.html`.
+
+On a running server, `/` is a start page with the tutorial and all documentation (rendered from `docs/` at build time under `/docs/`); the map application itself is at `/map`.

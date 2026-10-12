@@ -71,7 +71,7 @@ export class TestData {
   }
 }
 
-export async function openMap(page: Page, path = '/') {
+export async function openMap(page: Page, path = '/map') {
   await page.addInitScript(() => {
     try {
       localStorage.clear();

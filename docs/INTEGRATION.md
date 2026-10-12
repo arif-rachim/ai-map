@@ -9,8 +9,8 @@ Everything is served by the map server itself (no internet). Replace `http://map
 | Call search / airports / elevation / drawings from any backend | **REST API** (+ WebSocket events) | `/api/v1`, docs at `/api/v1/docs/` |
 | Open the basemap or drawings in GIS software | **Vector tiles (XYZ/TileJSON)**, **OGC API - Features**, GeoJSON/KML | `/api/v1/tiles`, `/api/v1/ogc` |
 
-Live examples: **`http://maps.local/sdk/examples/`**. Interactive API reference: **`http://maps.local/api/v1/docs/`**.
-Step-by-step tutorial (Bahasa Indonesia, with an iframe URL builder and an SDK playground): **`http://maps.local/sdk/examples/tutorial.html`** · [TUTORIAL.md](TUTORIAL.md).
+Start page with links to the map, tutorial and docs: **`http://maps.local/`** (the map itself is at `/map`). Live examples: **`http://maps.local/sdk/examples/`**. Interactive API reference: **`http://maps.local/api/v1/docs/`**.
+Step-by-step tutorial (with an iframe URL builder and an SDK playground): **`http://maps.local/sdk/examples/tutorial.html`** · [TUTORIAL.md](TUTORIAL.md).
 
 There is no authentication: anything on the LAN that can reach the server can read and write drawings.
 
@@ -25,7 +25,7 @@ Plain URL, no JavaScript needed:
 | Parameter | Meaning |
 |---|---|
 | `center=lon,lat`, `zoom`, `bearing`, `pitch` | Initial view |
-| `theme=auto\|light\|dark`, `lang=en\|ar` (map labels), `ui=en\|ar` (interface) | Appearance |
+| `theme=auto\|light\|dark`, `ui=en\|ar` (interface) | Appearance (map labels are always English; `lang` is accepted but ignored) |
 | `unit=km\|nm\|mi`, `coords=dd\|dms\|mgrs\|utm` | Units and coordinate format |
 | `hillshade=0\|1`, `contours=0\|1`, `terrain3d=0\|1` | Terrain display |
 | `controls=…` | Visible UI parts (see below; default all) |
@@ -43,7 +43,7 @@ Plain URL, no JavaScript needed:
 | `draw` | `draw.point`, `draw.line`, `draw.rectangle`, `draw.polygon`, `draw.circle`, `draw.text`, `draw.milsymbol` |
 | `measure` | `measure.distance`, `measure.area`, `measure.rings` |
 | `terrain` | `terrain.hillshade`, `terrain.contours`, `terrain.3d` |
-| `settings` | `settings.unit`, `settings.coords`, `settings.theme`, `settings.labels`, `settings.ui` |
+| `settings` | `settings.unit`, `settings.coords`, `settings.theme`, `settings.ui` |
 
 `controls=none` is a pure map; `controls=all,-draw.text,-status` (or just `-draw.text,-status`) shows everything except those; unknown names are ignored in the URL and rejected by `setControls`.
 
@@ -93,7 +93,7 @@ import { AiMapClient, addDrawings } from 'http://maps.local/sdk/aimap-sdk.mjs';
 const client = new AiMapClient('http://maps.local');
 const map = new maplibregl.Map({
   container: 'map',
-  style: client.styleUrl({ theme: 'light', lang: 'en', terrain: 'hillshade' }), // terrain: none | hillshade | 3d
+  style: client.styleUrl({ theme: 'light', terrain: 'hillshade' }), // terrain: none | hillshade | 3d
   center: [46.67, 24.71], zoom: 9,
 });
 map.on('load', async () => {
@@ -102,7 +102,7 @@ map.on('load', async () => {
 });
 ```
 
-Styles: `/api/v1/styles/{light|dark}.json?lang=en|ar&terrain=none|hillshade|3d`. Contour lines are generated in the browser by the full app and are not part of the style document.
+Styles: `/api/v1/styles/{light|dark}.json?terrain=none|hillshade|3d`. Labels are always English (`lang` is accepted for compatibility but ignored). Contour lines are generated in the browser by the full app and are not part of the style document.
 
 TypeScript types: `/sdk/aimap-sdk.d.ts`. With npm in a monorepo, depend on `packages/sdk` instead.
 
@@ -112,7 +112,7 @@ Base URL `http://maps.local/api/v1`, JSON, WGS84 lon/lat. Full reference: `/api/
 
 ```bash
 # Search: coordinates (DD/DMS/MGRS/UTM), airports, places/addresses
-curl 'http://maps.local/api/v1/search?q=Riyadh&lang=en&limit=5'
+curl 'http://maps.local/api/v1/search?q=Riyadh&limit=5'
 curl 'http://maps.local/api/v1/airports/OMDB'
 
 # Elevation

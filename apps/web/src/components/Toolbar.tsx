@@ -111,19 +111,6 @@ function MapOptions() {
               />
             </Row>
           )}
-          {has('labels') && (
-            <Row label={t('settings.labels')} stacked control="settings.labels">
-              <Segmented
-                label={t('settings.labels')}
-                value={s.labelLang}
-                onChange={s.setLabelLang}
-                options={[
-                  { value: 'en', label: 'English' },
-                  { value: 'ar', label: 'العربية' },
-                ]}
-              />
-            </Row>
-          )}
           {has('ui') && (
             <Row label={t('settings.ui')} stacked control="settings.ui">
               <Segmented

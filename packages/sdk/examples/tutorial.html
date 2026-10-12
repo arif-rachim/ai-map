@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tutorial AI Map</title>
+  <title>AI Map Tutorial</title>
   <link rel="icon" href="data:," />
   <style>
     :root {
@@ -72,164 +72,163 @@
 </head>
 <body>
   <header>
-    <h1>Memakai AI Map di aplikasi lain</h1>
-    <p>Panduan untuk menampilkan peta lewat iframe tanpa coding, dan untuk developer JavaScript yang ingin mengendalikan peta dari kode. Semua contoh berjalan offline di server ini: <strong id="origin"></strong>.</p>
+    <h1>Using AI Map in other applications</h1>
+    <p>A guide to showing the map in an iframe without coding, and for JavaScript developers who want to control the map from code. Every example runs offline on this server: <strong id="origin"></strong>. <a href="/">Home</a> · <a href="/map">Open the map</a></p>
   </header>
   <nav>
     <div>
-      <a href="#pilih">Memilih cara</a><a href="#a">A. Iframe (tanpa coding)</a><a href="#builder">Pembuat URL</a><a href="#resep">Resep</a>
-      <a href="#b">B. JavaScript</a><a href="#playground">Playground</a><a href="#maplibre">MapLibre sendiri</a><a href="#backend">Backend</a><a href="#masalah">Masalah umum</a>
+      <a href="#choose">Choosing an approach</a><a href="#a">A. Iframe (no coding)</a><a href="#builder">URL builder</a><a href="#recipes">Recipes</a>
+      <a href="#b">B. JavaScript</a><a href="#playground">Playground</a><a href="#maplibre">Your own MapLibre</a><a href="#backend">Backend</a><a href="#troubleshooting">Troubleshooting</a>
     </div>
   </nav>
   <main>
-    <section id="pilih">
-      <h2>Memilih cara</h2>
-      <p class="lead">Mulai dari yang paling sederhana yang memenuhi kebutuhan Anda.</p>
+    <section id="choose">
+      <h2>Choosing an approach</h2>
+      <p class="lead">Start with the simplest option that meets your needs.</p>
       <div class="grid">
-        <div class="card choice"><h4>Iframe + parameter URL</h4><p>Tampilkan peta di dashboard atau portal. Atur posisi, tampilan, dan tombol yang muncul lewat URL.</p><span class="tag">Tanpa coding · Bagian A</span></div>
-        <div class="card choice"><h4>Iframe + SDK</h4><p>Peta yang sama, tapi dikendalikan kode: marker kendaraan, fokus ke lokasi, mendengarkan klik.</p><span class="tag">Sedikit JavaScript · B1</span></div>
-        <div class="card choice"><h4>MapLibre sendiri</h4><p>Aplikasi Anda punya peta sendiri dan ingin memakai basemap serta gambar bersama dari server ini.</p><span class="tag">JavaScript · B2</span></div>
-        <div class="card choice"><h4>REST API</h4><p>Sistem backend (Java, .NET, Python, Node) membaca dan menulis data peta.</p><span class="tag">Backend · B3</span></div>
+        <div class="card choice"><h4>Iframe + URL parameters</h4><p>Show the map in a dashboard or portal. Set the position, appearance and visible buttons through the URL.</p><span class="tag">No coding · Part A</span></div>
+        <div class="card choice"><h4>Iframe + SDK</h4><p>The same map, controlled from code: vehicle markers, focusing on a location, listening to clicks.</p><span class="tag">A little JavaScript · B1</span></div>
+        <div class="card choice"><h4>Your own MapLibre</h4><p>Your application has its own map and wants to use the basemap and shared drawings from this server.</p><span class="tag">JavaScript · B2</span></div>
+        <div class="card choice"><h4>REST API</h4><p>Backend systems (Java, .NET, Python, Node) read and write map data.</p><span class="tag">Backend · B3</span></div>
       </div>
     </section>
 
     <section id="a">
-      <h2>A. Iframe tanpa coding</h2>
-      <p class="lead">Tempelkan satu tag ini ke halaman web mana pun di jaringan kantor:</p>
-      <pre><code>&lt;iframe src="{{BASE}}/embed" style="width:100%; height:600px; border:0" title="Peta"&gt;&lt;/iframe&gt;</code></pre>
-      <p>Lalu tambahkan parameter setelah <code>?</code>, dipisah <code>&amp;</code>. Contoh: <code>/embed?center=46.67,24.71&amp;zoom=10&amp;controls=none</code>.</p>
+      <h2>A. Iframe without coding</h2>
+      <p class="lead">Paste this one tag into any web page on the office network:</p>
+      <pre><code>&lt;iframe src="{{BASE}}/embed" style="width:100%; height:600px; border:0" title="Map"&gt;&lt;/iframe&gt;</code></pre>
+      <p>Then add parameters after <code>?</code>, separated by <code>&amp;</code>. Example: <code>/embed?center=46.67,24.71&amp;zoom=10&amp;controls=none</code>.</p>
 
       <h3>Parameter</h3>
       <div class="card" style="padding:4px 8px">
         <table>
-          <tr><th>Parameter</th><th>Arti</th><th>Contoh</th></tr>
-          <tr><td><code>center</code></td><td>Titik tengah — <strong>bujur dulu, lalu lintang</strong></td><td><code>center=46.6753,24.7136</code></td></tr>
-          <tr><td><code>zoom</code>, <code>bearing</code>, <code>pitch</code></td><td>Zoom 0–19, rotasi (derajat), kemiringan 0–60</td><td><code>zoom=11&amp;pitch=45</code></td></tr>
-          <tr><td><code>theme</code></td><td><code>auto</code> (ikut sistem), <code>light</code>, <code>dark</code></td><td><code>theme=dark</code></td></tr>
-          <tr><td><code>lang</code> / <code>ui</code></td><td>Bahasa label peta / bahasa tombol: <code>en</code>, <code>ar</code></td><td><code>lang=ar&amp;ui=ar</code></td></tr>
-          <tr><td><code>unit</code> / <code>coords</code></td><td>Jarak <code>km|nm|mi</code> / koordinat <code>dd|dms|mgrs|utm</code></td><td><code>unit=nm&amp;coords=mgrs</code></td></tr>
-          <tr><td><code>hillshade</code>, <code>contours</code>, <code>terrain3d</code></td><td>Relief, kontur, 3D: <code>1</code> atau <code>0</code></td><td><code>terrain3d=1</code></td></tr>
-          <tr><td><code>controls</code></td><td>Komponen yang tampil (lihat tabel di bawah)</td><td><code>controls=search,zoom</code></td></tr>
-          <tr><td><code>readonly</code></td><td>Pengguna tidak bisa mengubah gambar</td><td><code>readonly=1</code></td></tr>
-          <tr><td><code>interactive</code></td><td><code>0</code> = peta tidak bisa digeser/zoom pengguna</td><td><code>interactive=0</code></td></tr>
-          <tr><td><code>minZoom</code>, <code>maxZoom</code>, <code>maxBounds</code></td><td>Batas zoom dan area <code>barat,selatan,timur,utara</code></td><td><code>maxBounds=34,12,60,32</code></td></tr>
-          <tr><td><code>layers</code> / <code>select</code></td><td>Hanya layer tertentu yang terlihat / buka objek tertentu</td><td><code>layers=&lt;id&gt;</code></td></tr>
+          <tr><th>Parameter</th><th>Meaning</th><th>Example</th></tr>
+          <tr><td><code>center</code></td><td>Center point — <strong>longitude first, then latitude</strong></td><td><code>center=46.6753,24.7136</code></td></tr>
+          <tr><td><code>zoom</code>, <code>bearing</code>, <code>pitch</code></td><td>Zoom 0–19, rotation (degrees), tilt 0–60</td><td><code>zoom=11&amp;pitch=45</code></td></tr>
+          <tr><td><code>theme</code></td><td><code>auto</code> (follows the system), <code>light</code>, <code>dark</code></td><td><code>theme=dark</code></td></tr>
+          <tr><td><code>ui</code></td><td>Button/menu language: <code>en</code>, <code>ar</code> (map labels are always English)</td><td><code>ui=ar</code></td></tr>
+          <tr><td><code>unit</code> / <code>coords</code></td><td>Distance <code>km|nm|mi</code> / coordinates <code>dd|dms|mgrs|utm</code></td><td><code>unit=nm&amp;coords=mgrs</code></td></tr>
+          <tr><td><code>hillshade</code>, <code>contours</code>, <code>terrain3d</code></td><td>Relief, contours, 3D: <code>1</code> or <code>0</code></td><td><code>terrain3d=1</code></td></tr>
+          <tr><td><code>controls</code></td><td>Visible components (see the table below)</td><td><code>controls=search,zoom</code></td></tr>
+          <tr><td><code>readonly</code></td><td>Users cannot change drawings</td><td><code>readonly=1</code></td></tr>
+          <tr><td><code>interactive</code></td><td><code>0</code> = users cannot pan or zoom the map</td><td><code>interactive=0</code></td></tr>
+          <tr><td><code>minZoom</code>, <code>maxZoom</code>, <code>maxBounds</code></td><td>Zoom limits and area <code>west,south,east,north</code></td><td><code>maxBounds=34,12,60,32</code></td></tr>
+          <tr><td><code>layers</code> / <code>select</code></td><td>Only specific layers visible / open a specific object</td><td><code>layers=&lt;id&gt;</code></td></tr>
         </table>
       </div>
 
-      <h3>Komponen (<code>controls</code>)</h3>
+      <h3>Components (<code>controls</code>)</h3>
       <div class="card" style="padding:4px 8px">
         <table>
-          <tr><th>Grup</th><th>Isi (bisa disebut satu per satu)</th></tr>
-          <tr><td><code>search</code></td><td>Kotak pencarian</td></tr>
+          <tr><th>Group</th><th>Contents (can be listed one by one)</th></tr>
+          <tr><td><code>search</code></td><td>Search box</td></tr>
           <tr><td><code>draw</code></td><td><code>draw.point</code> <code>draw.line</code> <code>draw.rectangle</code> <code>draw.polygon</code> <code>draw.circle</code> <code>draw.text</code> <code>draw.milsymbol</code></td></tr>
           <tr><td><code>measure</code></td><td><code>measure.distance</code> <code>measure.area</code> <code>measure.rings</code></td></tr>
           <tr><td><code>terrain</code></td><td><code>terrain.hillshade</code> <code>terrain.contours</code> <code>terrain.3d</code></td></tr>
-          <tr><td><code>settings</code></td><td><code>settings.unit</code> <code>settings.coords</code> <code>settings.theme</code> <code>settings.labels</code> <code>settings.ui</code></td></tr>
-          <tr><td><code>layers</code>, <code>status</code></td><td>Panel layer; pil status (koordinat, elevasi, zoom)</td></tr>
-          <tr><td><code>zoom</code>, <code>compass</code>, <code>scale</code></td><td>Tombol zoom, kompas, skala</td></tr>
-          <tr><td><code>featurePanel</code>, <code>select</code>, <code>notices</code></td><td>Panel detail objek; memilih objek dengan klik; notifikasi</td></tr>
+          <tr><td><code>settings</code></td><td><code>settings.unit</code> <code>settings.coords</code> <code>settings.theme</code> <code>settings.ui</code></td></tr>
+          <tr><td><code>layers</code>, <code>status</code></td><td>Layer panel; status pill (coordinates, elevation, zoom)</td></tr>
+          <tr><td><code>zoom</code>, <code>compass</code>, <code>scale</code></td><td>Zoom buttons, compass, scale bar</td></tr>
+          <tr><td><code>featurePanel</code>, <code>select</code>, <code>notices</code></td><td>Object detail panel; selecting objects by clicking; notifications</td></tr>
         </table>
       </div>
-      <p class="note"><code>controls=none</code> = peta murni. <code>controls=-draw,-status</code> = semua kecuali itu. <code>controls=draw,-draw.milsymbol</code> = semua tool gambar kecuali simbol militer.</p>
+      <p class="note"><code>controls=none</code> = plain map. <code>controls=-draw,-status</code> = everything except those. <code>controls=draw,-draw.milsymbol</code> = every drawing tool except military symbols.</p>
     </section>
 
     <section id="builder">
-      <h2>Pembuat URL iframe</h2>
-      <p class="lead">Pilih opsi, lihat hasilnya langsung, lalu salin kodenya.</p>
+      <h2>Iframe URL builder</h2>
+      <p class="lead">Pick options, see the result live, then copy the code.</p>
       <div class="card builder">
         <form class="form" id="form" onsubmit="return false">
           <fieldset>
-            <legend>Posisi</legend>
-            <label>Lokasi <select name="place">
-              <option value="46.6753,24.7136|11">Riyadh</option><option value="55.2708,25.2048|12">Dubai</option><option value="31.2357,30.0444|11">Kairo</option>
-              <option value="42.5053,18.2164|11">Pegunungan Asir</option><option value="42,25|4">Seluruh region</option>
+            <legend>Position</legend>
+            <label>Location <select name="place">
+              <option value="46.6753,24.7136|11">Riyadh</option><option value="55.2708,25.2048|12">Dubai</option><option value="31.2357,30.0444|11">Cairo</option>
+              <option value="42.5053,18.2164|11">Asir Mountains</option><option value="42,25|4">Whole region</option>
             </select></label>
-            <label>Kemiringan (pitch) <select name="pitch"><option value="">0</option><option>45</option><option>60</option></select></label>
+            <label>Tilt (pitch) <select name="pitch"><option value="">0</option><option>45</option><option>60</option></select></label>
           </fieldset>
           <fieldset>
-            <legend>Tampilan</legend>
-            <label>Tema <select name="theme"><option value="">Otomatis</option><option value="light">Terang</option><option value="dark">Gelap</option></select></label>
-            <label>Label peta <select name="lang"><option value="">English</option><option value="ar">العربية</option></select></label>
-            <label>Bahasa tombol <select name="ui"><option value="">English</option><option value="ar">العربية</option></select></label>
-            <label>Satuan <select name="unit"><option value="">km</option><option value="nm">NM</option><option value="mi">mi</option></select></label>
-            <label>Relief 3D <select name="terrain3d"><option value="">Tidak</option><option value="1">Ya</option></select></label>
+            <legend>Appearance</legend>
+            <label>Theme <select name="theme"><option value="">Automatic</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+            <label>Interface language <select name="ui"><option value="">English</option><option value="ar">العربية</option></select></label>
+            <label>Unit <select name="unit"><option value="">km</option><option value="nm">NM</option><option value="mi">mi</option></select></label>
+            <label>3D relief <select name="terrain3d"><option value="">No</option><option value="1">Yes</option></select></label>
           </fieldset>
           <fieldset>
-            <legend>Komponen</legend>
+            <legend>Components</legend>
             <div class="chips" id="chips"></div>
-            <label>Baca saja <select name="readonly"><option value="">Tidak</option><option value="1">Ya</option></select></label>
-            <label>Kunci peta <select name="interactive"><option value="">Tidak</option><option value="0">Ya</option></select></label>
+            <label>Read-only <select name="readonly"><option value="">No</option><option value="1">Yes</option></select></label>
+            <label>Lock map <select name="interactive"><option value="">No</option><option value="0">Yes</option></select></label>
           </fieldset>
         </form>
         <div class="preview">
           <div class="url" id="url"></div>
           <pre><code id="snippet"></code></pre>
-          <iframe id="frame" title="Pratinjau peta"></iframe>
+          <iframe id="frame" title="Map preview"></iframe>
         </div>
       </div>
     </section>
 
-    <section id="resep">
-      <h2>Resep siap pakai</h2>
+    <section id="recipes">
+      <h2>Ready-made recipes</h2>
       <div class="card" style="padding:4px 8px">
         <table>
-          <tr><th>Kebutuhan</th><th>URL</th></tr>
-          <tr><td>Peta murni untuk dashboard</td><td><code>/embed?controls=none&amp;center=46.67,24.71&amp;zoom=10</code></td></tr>
-          <tr><td>Monitoring baca saja</td><td><code>/embed?controls=search,layers,zoom,status,featurePanel,select&amp;readonly=1</code></td></tr>
-          <tr><td>Layar TV / kios (terkunci, gelap, 3D)</td><td><code>/embed?controls=none&amp;interactive=0&amp;theme=dark&amp;terrain3d=1&amp;pitch=50&amp;center=42.5,18.2&amp;zoom=10</code></td></tr>
-          <tr><td>Tim lapangan (tanpa simbol militer &amp; pengaturan, MGRS)</td><td><code>/embed?controls=-draw.milsymbol,-settings&amp;coords=mgrs</code></td></tr>
-          <tr><td>Hanya wilayah GCC</td><td><code>/embed?maxBounds=34,12,60,32&amp;minZoom=5&amp;center=48,24&amp;zoom=5</code></td></tr>
+          <tr><th>Need</th><th>URL</th></tr>
+          <tr><td>Plain map for a dashboard</td><td><code>/embed?controls=none&amp;center=46.67,24.71&amp;zoom=10</code></td></tr>
+          <tr><td>Read-only monitoring</td><td><code>/embed?controls=search,layers,zoom,status,featurePanel,select&amp;readonly=1</code></td></tr>
+          <tr><td>TV screen / kiosk (locked, dark, 3D)</td><td><code>/embed?controls=none&amp;interactive=0&amp;theme=dark&amp;terrain3d=1&amp;pitch=50&amp;center=42.5,18.2&amp;zoom=10</code></td></tr>
+          <tr><td>Field teams (no military symbols or settings, MGRS)</td><td><code>/embed?controls=-draw.milsymbol,-settings&amp;coords=mgrs</code></td></tr>
+          <tr><td>GCC area only</td><td><code>/embed?maxBounds=34,12,60,32&amp;minZoom=5&amp;center=48,24&amp;zoom=5</code></td></tr>
         </table>
       </div>
     </section>
 
     <section id="b">
-      <h2>B. Developer JavaScript</h2>
-      <h3>B0. Memuat SDK</h3>
-      <p>SDK disajikan server ini — tidak perlu npm atau internet.</p>
+      <h2>B. JavaScript developers</h2>
+      <h3>B0. Loading the SDK</h3>
+      <p>The SDK is served by this server — no npm or internet needed.</p>
       <pre><code>&lt;script src="{{BASE}}/sdk/aimap-sdk.js"&gt;&lt;/script&gt;   &lt;!-- global: AiMap --&gt;
 
-// atau sebagai ES module
+// or as an ES module
 import { AiMapEmbed, AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs';</code></pre>
-      <p>Tipe TypeScript: <a href="/sdk/aimap-sdk.d.ts"><code>/sdk/aimap-sdk.d.ts</code></a> · Referensi REST: <a href="/api/v1/docs/">/api/v1/docs</a></p>
+      <p>TypeScript types: <a href="/sdk/aimap-sdk.d.ts"><code>/sdk/aimap-sdk.d.ts</code></a> · REST reference: <a href="/api/v1/docs/">/api/v1/docs</a></p>
 
-      <h3>B1. Membuat peta embed</h3>
-      <pre><code>&lt;div id="peta" style="height:600px"&gt;&lt;/div&gt;
+      <h3>B1. Creating an embedded map</h3>
+      <pre><code>&lt;div id="map" style="height:600px"&gt;&lt;/div&gt;
 &lt;script src="{{BASE}}/sdk/aimap-sdk.js"&gt;&lt;/script&gt;
 &lt;script&gt;
-  const map = AiMap.AiMapEmbed.create('#peta', {
+  const map = AiMap.AiMapEmbed.create('#map', {
     baseUrl: '{{BASE}}',
     center: [46.6753, 24.7136], zoom: 11,
-    controls: ['search', 'zoom', 'layers'],   // sama dengan parameter URL
+    controls: ['search', 'zoom', 'layers'],   // same as the URL parameters
     readonly: true,
   });
   await map.ready;
-  map.on('click', (e) =&gt; console.log('klik', e.lat, e.lon, e.markerId, e.featureId));
+  map.on('click', (e) =&gt; console.log('click', e.lat, e.lon, e.markerId, e.featureId));
 &lt;/script&gt;</code></pre>
 
       <div class="grid">
         <div class="card" style="padding:4px 8px">
           <table>
-            <tr><th>Perintah</th><th>Contoh</th></tr>
-            <tr><td>Pindah / zoom</td><td><code>setView({center, zoom})</code> <code>fitBounds([w,s,e,n])</code></td></tr>
-            <tr><td>Cari</td><td><code>search('Riyadh')</code></td></tr>
-            <tr><td>Marker sementara</td><td><code>setMarkers([...], replace)</code> <code>removeMarkers()</code></td></tr>
-            <tr><td>Objek bersama</td><td><code>addFeature</code> <code>updateFeature</code> <code>deleteFeature</code> <code>selectFeature</code></td></tr>
+            <tr><th>Command</th><th>Example</th></tr>
+            <tr><td>Move / zoom</td><td><code>setView({center, zoom})</code> <code>fitBounds([w,s,e,n])</code></td></tr>
+            <tr><td>Search</td><td><code>search('Riyadh')</code></td></tr>
+            <tr><td>Temporary markers</td><td><code>setMarkers([...], replace)</code> <code>removeMarkers()</code></td></tr>
+            <tr><td>Shared objects</td><td><code>addFeature</code> <code>updateFeature</code> <code>deleteFeature</code> <code>selectFeature</code></td></tr>
             <tr><td>Layer</td><td><code>listLayers</code> <code>setLayerVisible</code> <code>setActiveLayer</code></td></tr>
-            <tr><td>Tool &amp; tampilan</td><td><code>setTool('measure:distance')</code> <code>setOptions({theme})</code></td></tr>
-            <tr><td>Komponen &amp; kunci</td><td><code>setControls(['none'])</code> <code>setInteraction({interactive:false})</code></td></tr>
+            <tr><td>Tools &amp; appearance</td><td><code>setTool('measure:distance')</code> <code>setOptions({theme})</code></td></tr>
+            <tr><td>Components &amp; locking</td><td><code>setControls(['none'])</code> <code>setInteraction({interactive:false})</code></td></tr>
           </table>
         </div>
         <div class="card" style="padding:4px 8px">
           <table>
-            <tr><th>Event</th><th>Kapan</th></tr>
-            <tr><td><code>ready</code></td><td>Peta selesai dimuat</td></tr>
-            <tr><td><code>click</code></td><td>Peta/marker/objek diklik</td></tr>
-            <tr><td><code>moveend</code></td><td>Peta selesai digeser</td></tr>
-            <tr><td><code>select</code></td><td>Objek dipilih/dilepas</td></tr>
-            <tr><td><code>featureCreated/Updated/Deleted</code></td><td>Objek berubah, termasuk oleh user lain</td></tr>
-            <tr><td><code>measure</code></td><td>Hasil pengukuran berubah</td></tr>
+            <tr><th>Event</th><th>When</th></tr>
+            <tr><td><code>ready</code></td><td>The map has finished loading</td></tr>
+            <tr><td><code>click</code></td><td>The map, a marker or an object was clicked</td></tr>
+            <tr><td><code>moveend</code></td><td>The map has finished moving</td></tr>
+            <tr><td><code>select</code></td><td>An object was selected/deselected</td></tr>
+            <tr><td><code>featureCreated/Updated/Deleted</code></td><td>An object changed, including by other users</td></tr>
+            <tr><td><code>measure</code></td><td>The measurement result changed</td></tr>
           </table>
         </div>
       </div>
@@ -237,14 +236,14 @@ import { AiMapEmbed, AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs
 
     <section id="playground">
       <h2>Playground</h2>
-      <p class="lead">Klik tombol untuk menjalankan perintah pada peta di bawah. Kode yang dijalankan tampil di samping.</p>
+      <p class="lead">Click a button to run a command on the map below. The code that runs is shown alongside.</p>
       <div class="card playground">
         <div>
           <div class="buttons" id="pg-buttons"></div>
           <div id="pg-map"></div>
         </div>
         <div>
-          <pre id="pg-code"><code>// pilih tombol di kiri</code></pre>
+          <pre id="pg-code"><code>// pick a button on the left</code></pre>
           <h4 style="margin:12px 0 6px">Event</h4>
           <div id="pg-log"></div>
         </div>
@@ -252,56 +251,56 @@ import { AiMapEmbed, AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs
     </section>
 
     <section id="maplibre">
-      <h2>B2. Peta MapLibre milik sendiri</h2>
-      <p class="lead">Basemap, terrain, dan gambar bersama dari server ini di peta aplikasi Anda. Contoh lengkap: <a href="maplibre.html">maplibre.html</a>.</p>
+      <h2>B2. Your own MapLibre map</h2>
+      <p class="lead">The basemap, terrain and shared drawings from this server on your application's map. Full example: <a href="maplibre.html">maplibre.html</a>.</p>
       <pre><code>&lt;link rel="stylesheet" href="{{BASE}}/vendor/maplibre/maplibre-gl.css" /&gt;
-&lt;div id="peta" style="height:600px"&gt;&lt;/div&gt;
+&lt;div id="map" style="height:600px"&gt;&lt;/div&gt;
 &lt;script type="module"&gt;
   import * as maplibregl from '{{BASE}}/vendor/maplibre/maplibre-gl.mjs';
   import { AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs';
 
   const client = new AiMapClient('{{BASE}}');
   const map = new maplibregl.Map({
-    container: 'peta',
-    style: client.styleUrl({ theme: 'light', lang: 'en', terrain: 'hillshade' }),   // none | hillshade | 3d
+    container: 'map',
+    style: client.styleUrl({ theme: 'light', terrain: 'hillshade' }),   // none | hillshade | 3d
     center: [46.67, 24.71], zoom: 9,
   });
   map.on('load', async () =&gt; {
-    const gambar = await addDrawings(map, client);   // live, sama persis dengan aplikasi utama
-    map.on('click', gambar.layerIds, (e) =&gt; alert(e.features[0].properties.name));
+    const drawings = await addDrawings(map, client);   // live, exactly like the main app
+    map.on('click', drawings.layerIds, (e) =&gt; alert(e.features[0].properties.name));
   });
   map.on('click', async (e) =&gt; console.log(await client.elevation(e.lngLat.lng, e.lngLat.lat), 'm'));
 &lt;/script&gt;</code></pre>
     </section>
 
     <section id="backend">
-      <h2>B3. Backend dan bahasa lain</h2>
-      <pre><code>// Node.js 18+ — salin {{BASE}}/sdk/aimap-sdk.mjs ke proyek Anda
+      <h2>B3. Backends and other languages</h2>
+      <pre><code>// Node.js 18+ — copy {{BASE}}/sdk/aimap-sdk.mjs into your project
 import { AiMapClient } from './aimap-sdk.mjs';
 const client = new AiMapClient('{{BASE}}');
 const [layer] = await client.layers();
 await client.createFeature({ layerId: layer.id, kind: 'point', name: 'Checkpoint 4',
   geometry: { type: 'Point', coordinates: [46.7, 24.7] } });
-client.subscribe((m) =&gt; console.log(m.type), { onOpen: () =&gt; console.log('terhubung') });</code></pre>
-      <pre><code># Bahasa apa pun lewat HTTP
+client.subscribe((m) =&gt; console.log(m.type), { onOpen: () =&gt; console.log('connected') });</code></pre>
+      <pre><code># Any language over HTTP
 curl '{{BASE}}/api/v1/search?q=Riyadh&amp;limit=5'
 curl '{{BASE}}/api/v1/elevation?lon=42.5053&amp;lat=18.2164'
 curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
-      <p>Referensi lengkap dan pembuat client otomatis (Java, .NET, Python): <a href="/api/v1/docs/">/api/v1/docs</a> · <a href="/api/v1/openapi.json">openapi.json</a> · GIS: <a href="/api/v1/ogc">/api/v1/ogc</a></p>
+      <p>Full reference and client generators (Java, .NET, Python): <a href="/api/v1/docs/">/api/v1/docs</a> · <a href="/api/v1/openapi.json">openapi.json</a> · GIS: <a href="/api/v1/ogc">/api/v1/ogc</a></p>
     </section>
 
-    <section id="masalah">
-      <h2>Masalah umum</h2>
+    <section id="troubleshooting">
+      <h2>Troubleshooting</h2>
       <div class="card" style="padding:4px 8px">
         <table>
-          <tr><th>Gejala</th><th>Solusi</th></tr>
-          <tr><td>Iframe kosong</td><td>Buka <a href="/api/v1/health">/api/v1/health</a>; di server jalankan <code>aimapctl status</code></td></tr>
-          <tr><td><code>map.ready</code> tidak selesai</td><td><code>baseUrl</code> harus sama persis dengan alamat server (skema, host, port)</td></tr>
-          <tr><td>"Map is not ready yet"</td><td>Jalankan perintah setelah <code>await map.ready</code></td></tr>
-          <tr><td>"Unknown controls: …"</td><td>Periksa nama komponen di tabel <a href="#a">controls</a></td></tr>
-          <tr><td>"Version conflict"</td><td>Objek diubah user lain; ambil ulang lalu ulangi</td></tr>
-          <tr><td>Halaman HTTPS memblokir peta HTTP</td><td>Gunakan skema yang sama untuk halaman dan server peta</td></tr>
-          <tr><td>Marker hilang setelah reload</td><td><code>setMarkers</code> memang sementara; untuk data permanen pakai <code>addFeature</code></td></tr>
+          <tr><th>Symptom</th><th>Fix</th></tr>
+          <tr><td>Empty iframe</td><td>Open <a href="/api/v1/health">/api/v1/health</a>; run <code>aimapctl status</code> on the server</td></tr>
+          <tr><td><code>map.ready</code> never resolves</td><td><code>baseUrl</code> must exactly match the server address (scheme, host, port)</td></tr>
+          <tr><td>"Map is not ready yet"</td><td>Run commands after <code>await map.ready</code></td></tr>
+          <tr><td>"Unknown controls: …"</td><td>Check the component names in the <a href="#a">controls</a> table</td></tr>
+          <tr><td>"Version conflict"</td><td>Another user changed the object; fetch it again and retry</td></tr>
+          <tr><td>An HTTPS page blocks an HTTP map</td><td>Use the same scheme for the page and the map server</td></tr>
+          <tr><td>Markers disappear after a reload</td><td><code>setMarkers</code> is temporary by design; use <code>addFeature</code> for permanent data</td></tr>
         </table>
       </div>
     </section>
@@ -317,17 +316,17 @@ curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
     for (const pre of document.querySelectorAll('pre:not(#pg-code)')) {
       const b = document.createElement('button');
       b.className = 'copy';
-      b.textContent = 'Salin';
+      b.textContent = 'Copy';
       b.onclick = async () => {
         const text = pre.querySelector('code').textContent;
         try { await navigator.clipboard.writeText(text); } catch { const r = document.createRange(); r.selectNodeContents(pre); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); }
-        b.textContent = 'Tersalin'; setTimeout(() => (b.textContent = 'Salin'), 1500);
+        b.textContent = 'Copied'; setTimeout(() => (b.textContent = 'Copy'), 1500);
       };
       pre.append(b);
     }
 
     // ---- URL builder ----------------------------------------------------------------------------
-    const CHIPS = [['search', 'Cari'], ['draw', 'Gambar'], ['measure', 'Ukur'], ['layers', 'Layer'], ['terrain', 'Terrain'], ['settings', 'Pengaturan'], ['status', 'Status'], ['zoom', 'Zoom'], ['compass', 'Kompas'], ['scale', 'Skala'], ['featurePanel', 'Panel objek'], ['select', 'Pilih objek']];
+    const CHIPS = [['search', 'Search'], ['draw', 'Draw'], ['measure', 'Measure'], ['layers', 'Layers'], ['terrain', 'Terrain'], ['settings', 'Settings'], ['status', 'Status'], ['zoom', 'Zoom'], ['compass', 'Compass'], ['scale', 'Scale'], ['featurePanel', 'Object panel'], ['select', 'Select objects']];
     const chips = document.getElementById('chips');
     for (const [value, label] of CHIPS) chips.insertAdjacentHTML('beforeend', `<label><input type="checkbox" name="controls" value="${value}" checked /><span>${label}</span></label>`);
     const form = document.getElementById('form');
@@ -336,7 +335,7 @@ curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
       const f = new FormData(form);
       const [center, zoom] = f.get('place').split('|');
       const params = { center: center.split(',').map(Number), zoom: Number(zoom) };
-      for (const k of ['pitch', 'theme', 'lang', 'ui', 'unit']) if (f.get(k)) params[k] = k === 'pitch' ? Number(f.get(k)) : f.get(k);
+      for (const k of ['pitch', 'theme', 'ui', 'unit']) if (f.get(k)) params[k] = k === 'pitch' ? Number(f.get(k)) : f.get(k);
       if (f.get('terrain3d')) params.terrain3d = true;
       if (f.get('readonly')) params.readonly = true;
       if (f.get('interactive')) params.interactive = false;
@@ -344,7 +343,7 @@ curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
       if (selected.length !== CHIPS.length) params.controls = [...selected, 'notices'];
       const url = AiMap.buildEmbedUrl(BASE, params);
       document.getElementById('url').textContent = url;
-      document.getElementById('snippet').textContent = `<iframe src="${url}" style="width:100%; height:600px; border:0" title="Peta"></iframe>`;
+      document.getElementById('snippet').textContent = `<iframe src="${url}" style="width:100%; height:600px; border:0" title="Map"></iframe>`;
       clearTimeout(timer);
       timer = setTimeout(() => { const frame = document.getElementById('frame'); if (frame.src !== url) frame.src = url; }, 400);
     }
@@ -363,27 +362,27 @@ curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
     let savedId = null;
     let step = 0;
     const DEMOS = [
-      ['Ke Dubai', `await map.setView({ center: [55.2708, 25.2048], zoom: 12 });`, () => map.setView({ center: [55.2708, 25.2048], zoom: 12 })],
-      ['Ke Riyadh', `await map.setView({ center: [46.6753, 24.7136], zoom: 11 });`, () => map.setView({ center: [46.6753, 24.7136], zoom: 11 })],
-      ['Marker kendaraan', `await map.setMarkers([
+      ['Go to Dubai', `await map.setView({ center: [55.2708, 25.2048], zoom: 12 });`, () => map.setView({ center: [55.2708, 25.2048], zoom: 12 })],
+      ['Go to Riyadh', `await map.setView({ center: [46.6753, 24.7136], zoom: 11 });`, () => map.setView({ center: [46.6753, 24.7136], zoom: 11 })],
+      ['Vehicle markers', `await map.setMarkers([
   { id: 'hq', lon: 46.68, lat: 24.72, label: 'HQ', sidc: '10031000001211000000' },
-  { id: 'truk-7', lon: 46.64, lat: 24.69, label: 'Truk 7', color: '#34c759' },
-]);`, () => map.setMarkers([{ id: 'hq', lon: 46.68, lat: 24.72, label: 'HQ', sidc: '10031000001211000000' }, { id: 'truk-7', lon: 46.64, lat: 24.69, label: 'Truk 7', color: '#34c759' }])],
-      ['Gerakkan truk', `// panggil berkala dengan posisi terbaru
-await map.setMarkers([{ id: 'truk-7', lon, lat, label: 'Truk 7', color: '#34c759' }]);`, () => { step += 1; return map.setMarkers([{ id: 'truk-7', lon: 46.64 + step * 0.01, lat: 24.69 + step * 0.004, label: 'Truk 7', color: '#34c759' }]); }],
-      ['Hapus marker', `await map.removeMarkers();`, () => map.removeMarkers()],
-      ['Simpan pin bersama', `const v = await map.getView();
+  { id: 'truck-7', lon: 46.64, lat: 24.69, label: 'Truck 7', color: '#34c759' },
+]);`, () => map.setMarkers([{ id: 'hq', lon: 46.68, lat: 24.72, label: 'HQ', sidc: '10031000001211000000' }, { id: 'truck-7', lon: 46.64, lat: 24.69, label: 'Truck 7', color: '#34c759' }])],
+      ['Move the truck', `// call periodically with the latest position
+await map.setMarkers([{ id: 'truck-7', lon, lat, label: 'Truck 7', color: '#34c759' }]);`, () => { step += 1; return map.setMarkers([{ id: 'truck-7', lon: 46.64 + step * 0.01, lat: 24.69 + step * 0.004, label: 'Truck 7', color: '#34c759' }]); }],
+      ['Remove markers', `await map.removeMarkers();`, () => map.removeMarkers()],
+      ['Save a shared pin', `const v = await map.getView();
 const pin = await map.addFeature({
-  kind: 'point', name: 'Contoh tutorial',
+  kind: 'point', name: 'Tutorial example',
   geometry: { type: 'Point', coordinates: v.center },
 });
-await map.selectFeature(pin.id);`, async () => { const v = await map.getView(); const f = await map.addFeature({ kind: 'point', name: 'Contoh tutorial', geometry: { type: 'Point', coordinates: v.center } }); savedId = f.id; await map.selectFeature(f.id); }],
-      ['Hapus pin itu', `await map.deleteFeature(pin.id);`, async () => { if (!savedId) return log('simpan pin dulu'); await map.deleteFeature(savedId); savedId = null; }],
-      ['Mulai ukur jarak', `await map.setTool('measure:distance');   // klik di peta, dobel-klik untuk selesai`, () => map.setTool('measure:distance')],
-      ['Gelap + 3D', `await map.setOptions({ theme: 'dark', terrain3d: true });`, () => map.setOptions({ theme: 'dark', terrain3d: true })],
-      ['Peta murni + kunci', `await map.setControls(['none']);
+await map.selectFeature(pin.id);`, async () => { const v = await map.getView(); const f = await map.addFeature({ kind: 'point', name: 'Tutorial example', geometry: { type: 'Point', coordinates: v.center } }); savedId = f.id; await map.selectFeature(f.id); }],
+      ['Delete that pin', `await map.deleteFeature(pin.id);`, async () => { if (!savedId) return log('save a pin first'); await map.deleteFeature(savedId); savedId = null; }],
+      ['Measure distance', `await map.setTool('measure:distance');   // click on the map, double-click to finish`, () => map.setTool('measure:distance')],
+      ['Dark + 3D', `await map.setOptions({ theme: 'dark', terrain3d: true });`, () => map.setOptions({ theme: 'dark', terrain3d: true })],
+      ['Plain map + lock', `await map.setControls(['none']);
 await map.setInteraction({ interactive: false });`, async () => { await map.setControls(['none']); await map.setInteraction({ interactive: false }); }],
-      ['Kembalikan', `await map.setControls(['zoom', 'layers', 'featurePanel', 'select']);
+      ['Restore', `await map.setControls(['zoom', 'layers', 'featurePanel', 'select']);
 await map.setInteraction({ interactive: true });
 await map.setOptions({ theme: 'auto', terrain3d: false });
 await map.setTool('none');`, async () => { await map.setControls(['zoom', 'layers', 'featurePanel', 'select']); await map.setInteraction({ interactive: true }); await map.setOptions({ theme: 'auto', terrain3d: false }); await map.setTool('none'); }],

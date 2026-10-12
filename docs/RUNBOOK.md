@@ -82,8 +82,9 @@ aimapctl uninstall [--purge]
 
 - Status bar shows **Live** (WebSocket connected).
 - `curl http://<server>/api/capabilities` → `{"region":true,"world":true,"terrain":false,"geocoder":true}`.
-- Search `DXB`, `Riyadh`, `دبي`, `24.7136, 46.6753`, an MGRS grid reference.
+- Search `DXB`, `Riyadh`, `دبي`, `24.7136, 46.6753`, an MGRS grid reference (results are shown in English).
 - Browser dev tools → Network: no request to any external host.
+- `http://<server>/` shows the start page (tutorial and documentation); the map is at `http://<server>/map`.
 - Integration endpoints: `http://<server>/api/v1/docs/` (API reference), `http://<server>/sdk/examples/` (embed and MapLibre examples), `http://<server>/api/v1/ogc` (GIS). See [INTEGRATION.md](INTEGRATION.md).
 - If other systems reach the server under a different name than browsers do (e.g. through another proxy), set `PUBLIC_URL=http://<name>` for the `api` service so TileJSON/style/OGC links use it.
 - With terrain: `capabilities` shows `"terrain":true`; the toolbar has hillshade / contour / 3D toggles, the status bar shows elevation under the cursor, and distance measurements show an elevation profile.

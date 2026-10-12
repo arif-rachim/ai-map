@@ -14,7 +14,7 @@ export function buildStyle(theme: Theme, lang: LabelLang, caps: DataCapabilities
   const maxzoom = caps.terrainMaxzoom;
   return buildBasemapStyle({
     theme,
-    lang,
+    lang: 'en', // Labels are always English (Arabic labels pull the RTL plugin and extra glyphs).
     glyphs: `${origin}${DATA_URL}/assets/fonts/{fontstack}/{range}.pbf`,
     sprite: `${origin}${DATA_URL}/assets/sprites/v4`,
     world: caps.world ? { url: `pmtiles://${origin}${DATA_URL}/tiles/world.pmtiles` } : undefined,

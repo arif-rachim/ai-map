@@ -142,7 +142,7 @@ export const openApiDocument = {
         description: 'Use directly: `new maplibregl.Map({ style: "http://<server>/api/v1/styles/light.json" })`. QGIS: Vector Tiles → New connection → Style URL.',
         parameters: [
           { name: 'theme', in: 'path', required: true, schema: { type: 'string', enum: ['light', 'dark'] } },
-          q('lang', 'string', 'Label language', { enum: ['en', 'ar'], default: 'en' }),
+          q('lang', 'string', 'Ignored: labels are always English (kept for compatibility)', { enum: ['en', 'ar'], default: 'en' }),
           q('terrain', 'string', 'Terrain rendering', { enum: ['none', 'hillshade', '3d'], default: 'hillshade' }),
         ],
         responses: { '200': json({ type: 'object' }) },
@@ -177,7 +177,7 @@ export const openApiDocument = {
         summary: 'Unified search: coordinates (DD, DMS, MGRS, UTM), airports (name/IATA/ICAO), places and addresses',
         parameters: [
           q('q', 'string', 'Query text, e.g. "Riyadh", "DXB", "25.2, 55.3", "38R PK 12345 67890"'),
-          q('lang', 'string', 'Result language', { enum: ['en', 'ar'], default: 'en' }),
+          q('lang', 'string', 'Ignored: results are always in English (kept for compatibility)', { enum: ['en', 'ar'], default: 'en' }),
           q('limit', 'integer', 'Max results', { default: 10, maximum: 50 }),
           q('types', 'string', 'Comma list of coordinates,airport,place', { default: 'coordinates,airport,place' }),
         ],

@@ -113,7 +113,7 @@ test.describe('SDK with your own MapLibre map', () => {
     await expect(page.locator('#a pre code').first()).toContainText(`${new URL(page.url()).origin}/embed`);
     await page.locator('#playground').scrollIntoViewIfNeeded();
     await expect(page.locator('#pg-log')).toContainText('ready', { timeout: 30_000 });
-    await page.getByRole('button', { name: 'Marker kendaraan' }).click();
-    await expect(page.locator('#pg-log')).toContainText('✓ Marker kendaraan');
+    await page.getByRole('button', { name: 'Vehicle markers' }).click();
+    await expect(page.locator('#pg-log')).toContainText('✓ Vehicle markers');
   });
 });

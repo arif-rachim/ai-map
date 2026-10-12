@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { DOCS, docPage, docsIndexPage, landingPage } from './src/lib/docsSite';
 
 const api = process.env.API_URL ?? 'http://localhost:3000';
 
@@ -109,8 +110,35 @@ function vendorFiles(): Plugin {
   };
 }
 
+const DOCS_DIR = fileURLToPath(new URL('../../docs', import.meta.url));
+
+/** Static pages generated from docs/*.md: landing page at "/" (served as landing.html) and /docs/. The app lives at /map. */
+function sitePages(): Plugin {
+  const pages = (): Record<string, () => string> => ({
+    'landing.html': landingPage,
+    'docs/index.html': docsIndexPage,
+    ...Object.fromEntries(DOCS.map((d) => [`docs/${d.slug}.html`, () => docPage(d, readFileSync(path.join(DOCS_DIR, d.file), 'utf8'))])),
+  });
+  return {
+    name: 'site-pages',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? '/').split('?')[0]!;
+        const name = url === '/' ? 'landing.html' : url === '/docs' || url === '/docs/' ? 'docs/index.html' : url.slice(1);
+        const render = pages()[name];
+        if (!render) return next();
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.end(render());
+      });
+    },
+    generateBundle() {
+      for (const [fileName, render] of Object.entries(pages())) this.emitFile({ type: 'asset', fileName, source: render() });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), devData(), vendorFiles()],
+  plugins: [react(), devData(), vendorFiles(), sitePages()],
   server: {
     proxy: {
       '/api': { target: api, ws: true },

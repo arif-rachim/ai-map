@@ -76,7 +76,7 @@ export async function tileRoutes(app: FastifyInstance, ctx: AppContext) {
     const [world, region, terrain] = await Promise.all(ARCHIVE_NAMES.map((n) => ctx.archives[n].header()));
     const style = buildBasemapStyle({
       theme,
-      lang: q.lang,
+      lang: 'en', // Labels are always English; ?lang is accepted for compatibility but ignored.
       glyphs: `${base}/data/assets/fonts/{fontstack}/{range}.pbf`,
       sprite: `${base}/data/assets/sprites/v4`,
       world: world ? { url: `${base}/api/v1/tiles/world.json` } : undefined,
@@ -85,6 +85,6 @@ export async function tileRoutes(app: FastifyInstance, ctx: AppContext) {
       terrainOptions: { hillshade: q.terrain !== 'none', contours: false, terrain3d: q.terrain === '3d' },
     });
     reply.header('Access-Control-Allow-Origin', '*');
-    return { ...style, name: `AI Map ${theme} (${q.lang})` };
+    return { ...style, name: `AI Map ${theme} (en)` };
   });
 }

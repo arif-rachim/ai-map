@@ -266,9 +266,10 @@ echo "${G}${B}AI Map $BUNDLE_VERSION is running.${N}"
 ips=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.' | grep -v '^172\.\(1[6-9]\|2[0-9]\|3[01]\)\.' || true)
 suffix=$([[ "$PORT" == 80 ]] && echo "" || echo ":$PORT")
 for ip in ${ips:-127.0.0.1}; do
-  echo "    Map:          http://$ip$suffix/"
+  echo "    Map:          http://$ip$suffix/map"
 done
 first_ip=$(echo "${ips:-127.0.0.1}" | head -1)
+echo "    Start page:   http://$first_ip$suffix/   (tutorial and documentation)"
 echo "    API docs:     http://$first_ip$suffix/api/v1/docs/"
 echo "    Integration:  http://$first_ip$suffix/sdk/examples/"
 echo

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Real-time test</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>WebSocket <code>/api/v1/events</code> <span id="ws" class="pill">…</span></h2>
+        <p class="muted">Open the map (or the REST / Embed page) in another window, change something as admin, and watch the messages arrive here. Every client receives every change; the map filters by the layers it has loaded.</p>
+        <div class="row">
+          <button id="connect">Connect</button>
+          <button class="secondary" id="disconnect">Disconnect</button>
+          <button class="secondary" id="clear">Clear</button>
+          <a id="open-map" target="_blank">Open the map ↗</a>
+        </div>
+        <table id="counts"></table>
+      </section>
+      <section class="card">
+        <h2>Generate a change (admin)</h2>
+        <div class="row"><select id="layer" style="flex:1"></select></div>
+        <div class="row">
+          <button id="add">Add random point</button>
+          <button class="secondary" id="move">Move it</button>
+          <button class="danger" id="del">Delete it</button>
+        </div>
+        <div id="out"></div>
+      </section>
+    </div>
+    <section class="card" style="margin-top:16px">
+      <h2>Messages</h2>
+      <div class="log" id="log" style="height:420px"></div>
+    </section>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    T.header('realtime.html');
+    const $ = (s) => document.querySelector(s);
+    const counts = {};
+    let sub = null;
+    let lastId = null;
+    $('#open-map').href = `${T.base}/map`;
+
+    function renderCounts() {
+      $('#counts').innerHTML = Object.entries(counts).map(([k, n]) => `<tr><td>${k}</td><td>${n}</td></tr>`).join('');
+    }
+
+    async function connect() {
+      const AiMap = await T.loadSdk();
+      sub?.close();
+      const client = new AiMap.AiMapClient(T.base);
+      sub = client.subscribe(
+        (m) => {
+          counts[m.type] = (counts[m.type] ?? 0) + 1;
+          renderCounts();
+          const what = m.feature ? `${m.feature.name || m.feature.kind} v${m.feature.version} (layer ${m.feature.layerId.slice(0, 8)})` : m.layer ? m.layer.name : m.id;
+          T.log('#log', `${m.type.padEnd(16)} ${what}`);
+        },
+        {
+          onOpen: () => { $('#ws').className = 'pill ok'; $('#ws').textContent = 'connected'; },
+          onClose: () => { $('#ws').className = 'pill bad'; $('#ws').textContent = 'disconnected (retrying)'; },
+        },
+      );
+    }
+
+    (async () => {
+      const layers = await T.layers();
+      $('#layer').innerHTML = layers.map((l) => `<option value="${l.id}">${T.esc(l.name)}</option>`).join('');
+    })();
+
+    $('#add').onclick = async () => {
+      const lon = 55.15 + Math.random() * 0.25, lat = 25.05 + Math.random() * 0.2;
+      const r = await T.call('POST', '/features', { layerId: $('#layer').value, kind: 'point', name: `Live ${new Date().toLocaleTimeString()}`, geometry: { type: 'Point', coordinates: [lon, lat] } });
+      if (r.ok) lastId = r.data.id;
+      $('#out').innerHTML = T.pill(r) + (r.status === 401 ? ' <span class="muted">admin only: set the token on the Start page</span>' : '');
+    };
+    $('#move').onclick = async () => {
+      if (!lastId) return;
+      const cur = await T.call('GET', `/features/${lastId}`);
+      const [lon, lat] = cur.data.geometry.coordinates;
+      const r = await T.call('PATCH', `/features/${lastId}`, { version: cur.data.version, geometry: { type: 'Point', coordinates: [lon + 0.01, lat + 0.005] } });
+      $('#out').innerHTML = T.pill(r);
+    };
+    $('#del').onclick = async () => {
+      if (!lastId) return;
+      const r = await T.call('DELETE', `/features/${lastId}`);
+      lastId = null;
+      $('#out').innerHTML = T.pill(r);
+    };
+    $('#connect').onclick = () => connect().catch((e) => T.log('#log', `✗ ${e.message}`));
+    $('#disconnect').onclick = () => { sub?.close(); sub = null; $('#ws').className = 'pill'; $('#ws').textContent = 'closed'; };
+    $('#clear').onclick = () => { $('#log').textContent = ''; for (const k in counts) delete counts[k]; renderCounts(); };
+    connect().catch((e) => T.log('#log', `✗ ${e.message}`));
+  </script>
+</body>
+</html>

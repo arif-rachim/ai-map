@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Embed test</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <main>
+    <div class="card" style="margin-bottom:16px">
+      <div class="row">
+        <label>Controls <select id="preset">
+          <option value="all">all</option>
+          <option value="search,layers,measure,status,zoom,featurePanel,select,notices">viewer (no drawing tools)</option>
+          <option value="zoom,scale">minimal</option>
+          <option value="none">none (pure map)</option>
+        </select></label>
+        <label><input type="checkbox" id="readonly" /> readonly</label>
+        <label>Theme <select id="theme"><option value="">auto</option><option>light</option><option>dark</option></select></label>
+        <button id="recreate">Recreate iframe</button>
+        <span class="muted" id="url"></span>
+      </div>
+    </div>
+    <div class="split">
+      <div class="map-box" id="map"></div>
+      <div>
+        <section class="card">
+          <h2>Layers (load / unload)</h2>
+          <div id="layers" class="checklist"><p class="muted">Waiting for the map…</p></div>
+          <div class="row"><select id="active" style="flex:1"></select><button class="secondary" id="set-active">Set active (for new pins)</button></div>
+        </section>
+        <section class="card" style="margin-top:12px">
+          <h2>Admin token for the iframe</h2>
+          <p class="muted">Uses the token from the Start page (or type one). Without it, saving/deleting fails with 401.</p>
+          <div class="row"><input id="token" type="password" placeholder="token (empty = Start page token)" style="flex:1" /><button id="auth">setAuthToken</button><button class="secondary" id="noauth">Sign out</button></div>
+        </section>
+        <section class="card" style="margin-top:12px">
+          <h2>Commands</h2>
+          <div class="row">
+            <button class="secondary" data-cmd="dubai">Fly to Dubai</button>
+            <button class="secondary" data-cmd="markers">Host markers</button>
+            <button class="secondary" data-cmd="move">Move vehicle</button>
+            <button class="secondary" data-cmd="clearMarkers">Clear markers</button>
+          </div>
+          <div class="row">
+            <button data-cmd="addPin">Save pin at center</button>
+            <button class="danger" data-cmd="deleteLast">Delete last saved pin</button>
+          </div>
+          <div class="row">
+            <button class="secondary" data-cmd="measure">Measure distance</button>
+            <button class="secondary" data-cmd="drawPolygon">Draw polygon</button>
+            <button class="secondary" data-cmd="noTool">No tool</button>
+            <button class="secondary" data-cmd="search">search('DXB')</button>
+            <button class="secondary" data-cmd="list">listFeatures</button>
+            <button class="secondary" data-cmd="lock">Lock / unlock map</button>
+          </div>
+        </section>
+        <section class="card" style="margin-top:12px">
+          <h2>Events &amp; results</h2>
+          <div class="log" id="log"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    T.header('embed.html');
+    const $ = (s) => document.querySelector(s);
+    const log = (t) => T.log('#log', t);
+    let map = null;
+    let lastPin = null;
+    let step = 0;
+    let locked = false;
+
+    async function create() {
+      const AiMap = await T.loadSdk();
+      map?.destroy?.();
+      $('#map').innerHTML = '';
+      const controls = $('#preset').value.split(',');
+      const opts = { baseUrl: T.base, center: [55.2708, 25.2048], zoom: 11, controls, readonly: $('#readonly').checked || undefined, theme: $('#theme').value || undefined };
+      $('#url').textContent = AiMap.buildEmbedUrl(T.base, opts);
+      map = AiMap.AiMapEmbed.create('#map', opts);
+      for (const ev of ['click', 'select', 'featureCreated', 'featureUpdated', 'featureDeleted', 'measure']) map.on(ev, (d) => log(`event ${ev} ${JSON.stringify(d).slice(0, 160)}`));
+      map.on('moveend', (v) => log(`event moveend zoom=${v.zoom.toFixed(2)}`));
+      const view = await map.ready;
+      log(`ready zoom=${view.zoom.toFixed(1)}`);
+      if (T.token) await auth(T.token);
+      await renderLayers();
+    }
+
+    async function renderLayers() {
+      const layers = await map.listLayers();
+      $('#layers').innerHTML = layers.length
+        ? layers.map((l) => `<label><input type="checkbox" data-layer="${l.id}" ${l.loaded ? 'checked' : ''}/> ${T.esc(l.name)}</label>`).join('')
+        : '<p class="muted">No layers yet (an admin creates them on the REST page).</p>';
+      $('#active').innerHTML = layers.map((l) => `<option value="${l.id}">${T.esc(l.name)}</option>`).join('');
+      $('#layers').querySelectorAll('input').forEach((cb) => (cb.onchange = () => run(`setLayerVisible ${cb.checked}`, () => map.setLayerVisible(cb.dataset.layer, cb.checked))));
+    }
+
+    async function auth(token) {
+      const r = await map.setAuthToken(token || null);
+      log(`setAuthToken → admin=${r.admin}`);
+    }
+
+    async function run(label, fn) {
+      try {
+        const r = await fn();
+        log(`${label} → ${r === undefined ? 'ok' : JSON.stringify(r).slice(0, 300)}`);
+      } catch (err) {
+        log(`${label} ✗ ${err.message}`);
+      }
+    }
+
+    const commands = {
+      dubai: () => map.setView({ center: [55.2708, 25.2048], zoom: 12 }),
+      markers: () => map.setMarkers([
+        { id: 'hq', lon: 55.27, lat: 25.2, label: 'HQ', sidc: '10031000001211000000' },
+        { id: 'vehicle', lon: 55.3, lat: 25.22, label: 'Vehicle 7', color: '#16a34a' },
+        { id: 'contact', lon: 55.24, lat: 25.18, label: 'Contact', sidc: '10061000001211000000' },
+      ]),
+      move: () => map.setMarkers([{ id: 'vehicle', lon: 55.3 + ++step * 0.01, lat: 25.22 + step * 0.004, label: `Vehicle 7 (${step})`, color: '#16a34a' }]),
+      clearMarkers: () => map.removeMarkers(),
+      addPin: async () => {
+        const v = await map.getView();
+        const f = await map.addFeature({ kind: 'point', geometry: { type: 'Point', coordinates: v.center }, name: `Pin ${new Date().toLocaleTimeString()}` });
+        lastPin = f.id;
+        await map.selectFeature(f.id);
+        return { id: f.id, layerId: f.layerId };
+      },
+      deleteLast: () => (lastPin ? map.deleteFeature(lastPin).then(() => (lastPin = null)) : Promise.reject(new Error('save a pin first'))),
+      measure: () => map.setTool('measure:distance'),
+      drawPolygon: () => map.setTool('draw:polygon'),
+      noTool: () => map.setTool('none'),
+      search: () => map.search('DXB'),
+      list: async () => (await map.listFeatures()).map((f) => `${f.name || f.kind} (${f.layerId.slice(0, 6)})`),
+      lock: () => map.setInteraction({ interactive: (locked = !locked) ? false : true }),
+    };
+    document.querySelectorAll('[data-cmd]').forEach((b) => (b.onclick = () => run(b.textContent, commands[b.dataset.cmd])));
+    $('#auth').onclick = () => run('auth', () => auth($('#token').value.trim() || T.token));
+    $('#noauth').onclick = () => run('sign out', () => auth(null));
+    $('#set-active').onclick = () => run('setActiveLayer', async () => { await map.setActiveLayer($('#active').value); await renderLayers(); });
+    $('#recreate').onclick = () => create().catch((e) => log(`✗ ${e.message}`));
+    create().catch((e) => log(`✗ ${e.message}`));
+  </script>
+</body>
+</html>

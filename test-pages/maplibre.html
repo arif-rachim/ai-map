@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MapLibre test</title>
+  <link rel="stylesheet" href="common.css" />
+  <link rel="stylesheet" id="mlcss" />
+</head>
+<body>
+  <main>
+    <div class="split">
+      <div class="map-box" id="map"></div>
+      <div>
+        <section class="card">
+          <h2>Basemap</h2>
+          <div class="row">
+            <label>Theme <select id="theme"><option>light</option><option>dark</option></select></label>
+            <label>Terrain <select id="terrain"><option>none</option><option>hillshade</option><option>3d</option></select></label>
+            <button id="apply">Apply</button>
+          </div>
+          <p class="muted" id="style-url"></p>
+        </section>
+        <section class="card" style="margin-top:12px">
+          <h2>Drawing layers (live)</h2>
+          <div id="layers" class="checklist"></div>
+          <p class="muted">Drawn by the SDK's <code>addDrawings</code> (read-only, same symbols as the app). Changes made elsewhere appear instantly.</p>
+        </section>
+        <section class="card" style="margin-top:12px">
+          <h2>Click on the map</h2>
+          <div class="log" id="log" style="height:220px"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    T.header('maplibre.html');
+    const $ = (s) => document.querySelector(s);
+    const log = (t) => T.log('#log', t);
+    let maplibregl, client, map, drawings, caps;
+
+    async function boot() {
+      $('#mlcss').href = `${T.base}/vendor/maplibre/maplibre-gl.css`;
+      // MapLibre 6 is an ES module with a module worker. Browsers refuse a worker script from another origin,
+      // so the worker is a same-origin blob that imports the server's worker module (allowed with CORS).
+      maplibregl = await import(`${T.base}/vendor/maplibre/maplibre-gl.mjs`);
+      const worker = new Blob([`import ${JSON.stringify(`${T.base}/vendor/maplibre/maplibre-gl-worker.mjs`)};`], { type: 'text/javascript' });
+      maplibregl.setWorkerUrl(URL.createObjectURL(worker));
+      const AiMap = await T.loadSdk();
+      client = new AiMap.AiMapClient(T.base);
+      caps = await client.capabilities();
+      if (!caps.terrain) $('#terrain').innerHTML = '<option>none</option>';
+      map = new maplibregl.Map({ container: 'map', style: styleUrl(), center: [55.2708, 25.2048], zoom: 10 });
+      map.addControl(new maplibregl.NavigationControl());
+      map.addControl(new maplibregl.ScaleControl());
+      map.on('error', (e) => log(`map error: ${e.error?.message}`));
+      map.on('click', onClick);
+      map.once('load', async () => {
+        await renderLayers();
+        log('map loaded');
+      });
+    }
+
+    function styleUrl() {
+      const url = client.styleUrl({ theme: $('#theme').value, terrain: $('#terrain').value });
+      $('#style-url').textContent = url;
+      return url;
+    }
+
+    async function renderLayers() {
+      const layers = await client.layers();
+      $('#layers').innerHTML = layers.map((l, i) => `<label><input type="checkbox" value="${l.id}" ${i === 0 ? 'checked' : ''}/> ${T.esc(l.name)}</label>`).join('') || '<p class="muted">No layers.</p>';
+      $('#layers').querySelectorAll('input').forEach((cb) => (cb.onchange = () => drawings.setLayerIds(checkedIds())));
+      await showDrawings();
+    }
+
+    const checkedIds = () => [...document.querySelectorAll('#layers input:checked')].map((cb) => cb.value);
+
+    /** (Re)adds the live drawings; needed again after a style change, which drops all sources. */
+    async function showDrawings() {
+      drawings?.destroy();
+      drawings = await AiMap.addDrawings(map, client, { layerIds: checkedIds(), onChange: (f) => log(`drawings: ${f.length} features shown`) });
+    }
+
+    async function onClick(e) {
+      const { lng, lat } = e.lngLat;
+      const hit = drawings && map.queryRenderedFeatures(e.point, { layers: drawings.layerIds.filter((id) => map.getLayer(id)) })[0];
+      if (hit) log(`drawing: ${hit.properties.name || hit.properties.kind}`);
+      // Elevation needs the terrain data (phase 2); without it the API answers 503.
+      const elev = caps.terrain ? await client.elevation(lng, lat).catch(() => null) : null;
+      log(`${lat.toFixed(5)}, ${lng.toFixed(5)}  elevation: ${caps.terrain ? `${elev ?? '?'} m` : 'n/a (terrain not installed)'}`);
+    }
+
+    $('#apply').onclick = () => {
+      map.setStyle(styleUrl());
+      map.once('styledata', () => showDrawings());
+    };
+    boot().catch((e) => log(`✗ ${e.message}`));
+  </script>
+</body>
+</html>

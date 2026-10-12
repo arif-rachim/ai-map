@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Traffic test</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>Burst</h2>
+        <p class="muted">Sends N requests with C in parallel and measures the time in the browser. On the server, the same requests show up in <code>aimapctl access</code> (or <code>docker logs -f aimap-local-web-1</code> locally) with <code>duration_ms</code> = time inside the container.</p>
+        <div class="row">
+          <label>Endpoint <select id="ep">
+            <option value="/health">/health (cheap)</option>
+            <option value="/search?q=DXB">/search?q=DXB</option>
+            <option value="/search?q=25.2,55.3">/search coordinates</option>
+            <option value="/layers">/layers</option>
+            <option value="/capabilities">/capabilities</option>
+            <option value="TILE">random vector tile (z12, Dubai)</option>
+          </select></label>
+        </div>
+        <div class="row"><label>N <input id="n" type="number" value="100" min="1" max="5000" style="width:90px" /></label><label>C <input id="c" type="number" value="10" min="1" max="100" style="width:70px" /></label><button id="go">Run</button></div>
+        <div id="progress" class="muted"></div>
+      </section>
+      <section class="card">
+        <h2>Result</h2>
+        <table id="result"><tr><td class="muted">Run a burst.</td></tr></table>
+      </section>
+    </div>
+    <section class="card" style="margin-top:16px">
+      <h2>Request ids (match them in the access log)</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    T.header('traffic.html');
+    const $ = (s) => document.querySelector(s);
+    const pct = (a, p) => a[Math.min(a.length - 1, Math.floor((p / 100) * a.length))];
+
+    function path() {
+      const ep = $('#ep').value;
+      if (ep !== 'TILE') return ep;
+      // Dubai at z12 is around x 2675-2680, y 1749-1754.
+      return `/tiles/region/12/${2675 + Math.floor(Math.random() * 6)}/${1749 + Math.floor(Math.random() * 6)}.mvt`;
+    }
+
+    $('#go').onclick = async () => {
+      const n = Math.max(1, +$('#n').value), c = Math.max(1, +$('#c').value);
+      const times = [], statuses = {};
+      let next = 0, done = 0;
+      const t0 = performance.now();
+      $('#go').disabled = true;
+      const worker = async () => {
+        while (next < n) {
+          next += 1;
+          const r = await T.call('GET', path(), undefined, { auth: false });
+          times.push(r.ms);
+          statuses[r.status] = (statuses[r.status] ?? 0) + 1;
+          if (r.requestId && done % Math.ceil(n / 20) === 0) T.log('#log', `${r.status} ${r.ms} ms  ${r.requestId}`);
+          done += 1;
+          if (done % 10 === 0 || done === n) $('#progress').textContent = `${done} / ${n}`;
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(c, n) }, worker));
+      const total = (performance.now() - t0) / 1000;
+      times.sort((a, b) => a - b);
+      $('#result').innerHTML = [
+        ['Requests', n], ['Parallel', c], ['Total time', `${total.toFixed(2)} s`], ['Throughput', `${(n / total).toFixed(1)} req/s`],
+        ['Min / p50 / p95 / max', `${times[0]} / ${pct(times, 50)} / ${pct(times, 95)} / ${times[times.length - 1]} ms`],
+        ['Status codes', Object.entries(statuses).map(([k, v]) => `${k === '0' ? 'network error' : k}: ${v}`).join(', ')],
+      ].map(([k, v]) => `<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join('');
+      $('#go').disabled = false;
+    };
+  </script>
+</body>
+</html>

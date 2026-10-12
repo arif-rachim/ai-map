@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Map test pages</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>1. Server</h2>
+        <p class="muted">Base URL of the map server. Locally: <code>http://localhost:8080</code>; production: <code>https://map.jac.mil.ae</code>.</p>
+        <div class="row">
+          <input id="base" style="flex:1" />
+          <button id="save-base">Save &amp; check</button>
+        </div>
+        <div id="checks"></div>
+      </section>
+
+      <section class="card">
+        <h2>2. Admin (for writing)</h2>
+        <p class="muted">Reading needs nothing. Creating/editing layers and drawings needs either the admin password (gives a 12 h session) or the <code>ADMIN_API_TOKEN</code> (<code>aimapctl admin</code> on the server). Stored in this browser only.</p>
+        <h3>Option A: password</h3>
+        <div class="row"><input id="password" type="password" placeholder="ADMIN_PASSWORD" style="flex:1" /><button id="login">Log in</button></div>
+        <h3>Option B: API token</h3>
+        <div class="row"><input id="token" type="password" placeholder="ADMIN_API_TOKEN" style="flex:1" /><button id="use-token">Use token</button></div>
+        <div class="row"><button class="secondary" id="logout">Forget token (read-only)</button></div>
+        <div id="auth-out"></div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px">
+      <h2>Pages</h2>
+      <table>
+        <tr><td><a href="rest.html">REST API</a></td><td>Every endpoint with one click: search, airports, elevation, layers, features, import/export, auth. Shows status, time and request id.</td></tr>
+        <tr><td><a href="embed.html">Embed (iframe)</a></td><td>The full map in an iframe, driven by the SDK: load layers, admin token, save pins, markers, tools, events.</td></tr>
+        <tr><td><a href="maplibre.html">Own MapLibre map</a></td><td>Your own MapLibre GL map using the server's style, tiles and live drawings of chosen layers; click for elevation.</td></tr>
+        <tr><td><a href="realtime.html">Real-time</a></td><td>WebSocket event stream: open it next to the map and watch changes arrive.</td></tr>
+        <tr><td><a href="traffic.html">Traffic test</a></td><td>Sends bursts of requests and shows latency, to check the access log (<code>aimapctl access</code>).</td></tr>
+      </table>
+    </section>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    T.header('index.html');
+    const $ = (s) => document.querySelector(s);
+    $('#base').value = T.base;
+
+    async function checks() {
+      const out = $('#checks');
+      out.innerHTML = '<p class="muted">Checking…</p>';
+      const rows = [];
+      const add = (name, r, note = '') => rows.push(`<tr><td>${name}</td><td>${T.pill(r)}</td><td class="muted">${T.esc(note)}</td></tr>`);
+      const h = await T.call('GET', '/health', undefined, { auth: false });
+      add('Health', h, h.status === 0 ? 'not reachable (server down, wrong URL, or CORS)' : '');
+      const c = await T.call('GET', '/capabilities', undefined, { auth: false });
+      add('Capabilities', c, c.ok ? Object.entries(c.data).filter(([, v]) => typeof v === 'boolean').map(([k, v]) => `${k}:${v ? 'yes' : 'no'}`).join('  ') : '');
+      const l = await T.call('GET', '/layers', undefined, { auth: false });
+      add('Layers', l, l.ok ? `${l.data.length}: ${l.data.map((x) => x.name).join(', ')}` : '');
+      // A request with a custom header forces a CORS preflight from this page's origin.
+      const cors = await fetch(T.api('/health'), { headers: { 'x-test-header': '1' } }).then((r) => ({ ok: r.ok, status: r.status, ms: 0, requestId: r.headers.get('x-request-id') }), () => ({ ok: false, status: 0, ms: 0 }));
+      add('CORS preflight (custom header)', cors, `page origin: ${location.origin}`);
+      const s = await T.call('GET', '/auth/session');
+      add('Admin session', s, s.ok ? `admin: ${s.data.admin}, login enabled: ${s.data.loginEnabled}` : '');
+      out.innerHTML = `<table>${rows.join('')}</table>`;
+      T.refreshHeader();
+    }
+
+    $('#save-base').onclick = () => { T.base = $('#base').value; document.getElementById('hdr-base').textContent = T.base; checks(); };
+    $('#login').onclick = async () => {
+      const r = await T.call('POST', '/auth/login', { password: $('#password').value }, { auth: false });
+      if (r.ok) T.token = r.data.token;
+      T.show('#auth-out', r);
+      T.refreshHeader();
+      $('#password').value = '';
+      checks();
+    };
+    $('#use-token').onclick = async () => { T.token = $('#token').value.trim(); $('#token').value = ''; T.refreshHeader(); T.show('#auth-out', await T.call('GET', '/auth/session')); checks(); };
+    $('#logout').onclick = () => { T.token = ''; $('#auth-out').innerHTML = '<p class="muted">Token forgotten: read-only.</p>'; checks(); };
+    checks();
+  </script>
+</body>
+</html>

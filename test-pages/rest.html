@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>REST API test</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>Search &amp; airports</h2>
+        <div class="row"><input id="q" value="DXB" style="flex:1" /><button data-run="search">Search</button></div>
+        <p class="muted">Try: <code>DXB</code>, <code>Dubai</code>, <code>25.2048, 55.2708</code>, <code>25°12'N 55°16'E</code>, <code>40R CN 27 87</code></p>
+        <div class="row"><input id="icao" value="OMDB" size="8" /><button data-run="airport">Airport by code</button><button class="secondary" data-run="airportSearch">Airport search</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Elevation</h2>
+        <p class="muted">Needs terrain data (phase 2); without it the API answers 404/503.</p>
+        <div class="row"><input id="lon" value="55.2744" size="9" /><input id="lat" value="25.1972" size="9" /><button data-run="elevation">Point</button><button class="secondary" data-run="profile">Profile (2 points)</button></div>
+      </section>
+
+      <section class="card">
+        <h2>System &amp; basemap</h2>
+        <div class="row">
+          <button data-run="capabilities">Capabilities</button>
+          <button class="secondary" data-run="tiles">Tilesets</button>
+          <button class="secondary" data-run="tilejson">TileJSON region</button>
+          <button class="secondary" data-run="style">Style (light)</button>
+          <button class="secondary" data-run="ogc">OGC collections</button>
+          <button class="secondary" data-run="session">Auth session</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid" style="margin-top:16px">
+      <section class="card">
+        <h2>Layers</h2>
+        <div class="row"><select id="layer" style="flex:1"></select><button class="secondary" id="reload-layers">↻</button></div>
+        <div class="row">
+          <button data-run="listLayers">List layers</button>
+          <button class="secondary" data-run="features">Features of layer</button>
+          <button class="secondary" data-run="geojson">GeoJSON of layer</button>
+          <a id="export-kml" target="_blank">Download KML</a>
+        </div>
+        <h3>Admin only</h3>
+        <div class="row"><input id="layer-name" placeholder="New layer name, e.g. abc" style="flex:1" /><button data-run="createLayer">Create layer</button></div>
+        <div class="row"><input id="rename" placeholder="New name for selected layer" style="flex:1" /><button class="secondary" data-run="renameLayer">Rename</button><button class="danger" data-run="deleteLayer">Delete layer</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Drawings (admin only)</h2>
+        <div class="row"><input id="fname" value="Test point" style="flex:1" /><input id="flon" value="55.2708" size="9" /><input id="flat" value="25.2048" size="9" /></div>
+        <div class="row">
+          <button data-run="addPoint">Add point</button>
+          <button class="secondary" data-run="addPolygon">Add square around it</button>
+          <button class="secondary" data-run="addCircle">Add 2 km circle</button>
+          <button class="secondary" data-run="addSymbol">Add military symbol</button>
+        </div>
+        <div class="row"><input id="fid" placeholder="feature id (filled after add)" style="flex:1" /><button class="secondary" data-run="renameFeature">Rename</button><button class="danger" data-run="deleteFeature">Delete</button></div>
+        <h3>Import GeoJSON into selected layer</h3>
+        <textarea id="import" rows="5">{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Imported A"},"geometry":{"type":"Point","coordinates":[55.30,25.26]}},{"type":"Feature","properties":{"name":"Imported line"},"geometry":{"type":"LineString","coordinates":[[55.25,25.20],[55.33,25.25]]}}]}</textarea>
+        <div class="row"><button data-run="importAppend">Import (append)</button><button class="danger" data-run="importReplace">Import (replace layer content)</button></div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px">
+      <h2>Response <span id="what" class="muted"></span></h2>
+      <div id="out"><p class="muted">Click a button above.</p></div>
+    </section>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    T.header('rest.html');
+    const $ = (s) => document.querySelector(s);
+    const v = (s) => $(s).value.trim();
+    const layerId = () => $('#layer').value;
+    const enc = encodeURIComponent;
+
+    async function fillLayers() {
+      const keep = layerId();
+      const layers = await T.layers();
+      $('#layer').innerHTML = layers.map((l) => `<option value="${l.id}">${T.esc(l.name)}</option>`).join('') || '<option value="">(no layers)</option>';
+      if (layers.some((l) => l.id === keep)) $('#layer').value = keep;
+      $('#export-kml').href = layerId() ? T.api(`/layers/${layerId()}/export.kml`) : '#';
+    }
+    $('#layer').onchange = () => ($('#export-kml').href = T.api(`/layers/${layerId()}/export.kml`));
+    $('#reload-layers').onclick = fillLayers;
+
+    const square = (lon, lat, d = 0.01) => ({ type: 'Polygon', coordinates: [[[lon - d, lat - d], [lon + d, lat - d], [lon + d, lat + d], [lon - d, lat + d], [lon - d, lat - d]]] });
+    const circle = (lon, lat, m, n = 64) => {
+      const dLat = m / 111320, dLon = m / (111320 * Math.cos((lat * Math.PI) / 180));
+      const ring = Array.from({ length: n + 1 }, (_, i) => { const a = (2 * Math.PI * (i % n)) / n; return [lon + dLon * Math.cos(a), lat + dLat * Math.sin(a)]; });
+      return { type: 'Polygon', coordinates: [ring] };
+    };
+    const point = () => ({ type: 'Point', coordinates: [Number(v('#flon')), Number(v('#flat'))] });
+
+    const actions = {
+      search: () => T.call('GET', `/search?q=${enc(v('#q'))}&limit=8`),
+      airport: () => T.call('GET', `/airports/${enc(v('#icao'))}`),
+      airportSearch: () => T.call('GET', `/airports/search?q=${enc(v('#icao'))}`),
+      elevation: () => T.call('GET', `/elevation?lon=${v('#lon')}&lat=${v('#lat')}`),
+      profile: () => T.call('POST', '/elevation/profile', { coordinates: [[Number(v('#lon')), Number(v('#lat'))], [Number(v('#lon')) + 0.1, Number(v('#lat')) + 0.05]], samples: 20 }),
+      capabilities: () => T.call('GET', '/capabilities'),
+      tiles: () => T.call('GET', '/tiles'),
+      tilejson: () => T.call('GET', '/tiles/region.json'),
+      style: async () => { const r = await T.call('GET', '/styles/light.json'); if (r.ok) r.data = { ...r.data, layers: `${r.data.layers.length} layers (truncated)` }; return r; },
+      ogc: () => T.call('GET', '/ogc/collections'),
+      session: () => T.call('GET', '/auth/session'),
+      listLayers: () => T.call('GET', '/layers'),
+      features: () => T.call('GET', `/features?layerId=${layerId()}`),
+      geojson: () => T.call('GET', `/features.geojson?layerId=${layerId()}`),
+      createLayer: async () => { const r = await T.call('POST', '/layers', { name: v('#layer-name') || `Test ${new Date().toLocaleTimeString()}` }); await fillLayers(); if (r.ok) $('#layer').value = r.data.id; return r; },
+      renameLayer: async () => { const r = await T.call('PATCH', `/layers/${layerId()}`, { name: v('#rename') }); await fillLayers(); return r; },
+      deleteLayer: async () => { if (!confirmDelete()) return null; const r = await T.call('DELETE', `/layers/${layerId()}`); await fillLayers(); return r; },
+      addPoint: () => addFeature({ kind: 'point', geometry: point(), name: v('#fname') }),
+      addPolygon: () => addFeature({ kind: 'polygon', geometry: square(...point().coordinates), name: `${v('#fname')} (area)` }),
+      addCircle: () => addFeature({ kind: 'circle', geometry: circle(...point().coordinates, 2000), center: point().coordinates, radiusM: 2000, name: `${v('#fname')} (2 km)` }),
+      addSymbol: () => addFeature({ kind: 'milsymbol', geometry: point(), sidc: '10031000001211000000', name: `${v('#fname')} (unit)` }),
+      renameFeature: async () => { const cur = await T.call('GET', `/features/${v('#fid')}`); if (!cur.ok) return cur; return T.call('PATCH', `/features/${v('#fid')}`, { version: cur.data.version, name: `${cur.data.name} (renamed)` }); },
+      deleteFeature: () => T.call('DELETE', `/features/${v('#fid')}`),
+      importAppend: () => T.call('POST', `/layers/${layerId()}/import?mode=append`, $('#import').value, { contentType: 'application/geo+json' }),
+      importReplace: () => (confirmDelete() ? T.call('POST', `/layers/${layerId()}/import?mode=replace`, $('#import').value, { contentType: 'application/geo+json' }) : null),
+    };
+    // Inline confirmation (no browser dialogs): the danger button must be clicked twice within 3 s.
+    let armed = 0;
+    function confirmDelete() {
+      if (Date.now() - armed < 3000) return true;
+      armed = Date.now();
+      $('#out').innerHTML = '<p class="pill warn">Click the red button again within 3 seconds to confirm.</p>';
+      return false;
+    }
+    async function addFeature(body) {
+      const r = await T.call('POST', '/features', { layerId: layerId(), ...body });
+      if (r.ok) $('#fid').value = r.data.id;
+      return r;
+    }
+
+    document.querySelectorAll('[data-run]').forEach((b) => {
+      b.onclick = async () => {
+        const name = b.dataset.run;
+        const r = await actions[name]();
+        if (!r) return;
+        $('#what').textContent = `· ${b.textContent}`;
+        T.show('#out', r);
+        if (r.status === 401) $('#out').insertAdjacentHTML('afterbegin', '<p class="pill warn">Admin only: log in or set the API token on the Start page.</p> ');
+      };
+    });
+    fillLayers();
+  </script>
+</body>
+</html>

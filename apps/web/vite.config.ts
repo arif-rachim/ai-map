@@ -50,7 +50,6 @@ const nm = (p: string) => fileURLToPath(new URL(`../../node_modules/${p}`, impor
 /**
  * Same-origin static copies of runtime files that libraries load by URL (no CDN in airgap):
  * - MapLibre v6 module worker (+ the shared chunk it imports), set via setWorkerUrl()
- * - Arabic/RTL text shaping plugin (package "exports" hides the prebuilt bundle)
  */
 const VENDOR_FILES: Record<string, string> = {
   // Full MapLibre ESM build + CSS for SDK examples and external pages on the airgapped LAN.
@@ -58,7 +57,6 @@ const VENDOR_FILES: Record<string, string> = {
   'vendor/maplibre/maplibre-gl.css': nm('maplibre-gl/dist/maplibre-gl.css'),
   'vendor/maplibre/maplibre-gl-worker.mjs': nm('maplibre-gl/dist/maplibre-gl-worker.mjs'),
   'vendor/maplibre/maplibre-gl-shared.mjs': nm('maplibre-gl/dist/maplibre-gl-shared.mjs'),
-  'vendor/mapbox-gl-rtl-text.js': nm('@mapbox/mapbox-gl-rtl-text/dist/mapbox-gl-rtl-text.js'),
 };
 
 const SDK_DIRS: Record<string, string> = {

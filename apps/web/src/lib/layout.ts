@@ -4,7 +4,7 @@ import type { DrawTool, MeasureTool } from '../store';
 export const DRAW_TOOLS: DrawTool[] = ['point', 'line', 'rectangle', 'polygon', 'circle', 'text', 'milsymbol'];
 export const MEASURE_TOOLS: MeasureTool[] = ['distance', 'area', 'rings'];
 export const TERRAIN_TOGGLES = ['hillshade', 'contours', '3d'] as const;
-export const SETTINGS = ['unit', 'coords', 'theme', 'labels', 'ui'] as const;
+export const SETTINGS = ['unit', 'coords', 'theme'] as const;
 
 export interface UiLayout {
   search: boolean;

@@ -16,7 +16,7 @@ describe('AiMapClient', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     const c = new AiMapClient('http://maps.local/');
-    expect(c.styleUrl({ theme: 'dark', lang: 'ar' })).toBe('http://maps.local/api/v1/styles/dark.json?lang=ar');
+    expect(c.styleUrl({ theme: 'dark' })).toBe('http://maps.local/api/v1/styles/dark.json');
     await c.features({ bbox: [1, 2, 3, 4], layerId: 'L' });
     expect(fetchMock.mock.calls[0]![0]).toBe('http://maps.local/api/v1/features?bbox=1%2C2%2C3%2C4&layerId=L');
 

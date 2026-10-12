@@ -7,7 +7,7 @@ export const CONTROL_GROUPS = {
   draw: ['draw.point', 'draw.line', 'draw.rectangle', 'draw.polygon', 'draw.circle', 'draw.text', 'draw.milsymbol'],
   measure: ['measure.distance', 'measure.area', 'measure.rings'],
   terrain: ['terrain.hillshade', 'terrain.contours', 'terrain.3d'],
-  settings: ['settings.unit', 'settings.coords', 'settings.theme', 'settings.labels', 'settings.ui'],
+  settings: ['settings.unit', 'settings.coords', 'settings.theme'],
   layers: [],
   status: [],
   zoom: [],

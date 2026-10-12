@@ -78,8 +78,8 @@ export class AiMapClient {
   }
 
   /** MapLibre style URL: `new maplibregl.Map({ container, style: client.styleUrl() })`. */
-  styleUrl(opts: { theme?: 'light' | 'dark'; lang?: 'en' | 'ar'; terrain?: 'none' | 'hillshade' | '3d' } = {}): string {
-    return this.url(`/styles/${opts.theme ?? 'light'}.json`, { lang: opts.lang, terrain: opts.terrain });
+  styleUrl(opts: { theme?: 'light' | 'dark'; terrain?: 'none' | 'hillshade' | '3d' } = {}): string {
+    return this.url(`/styles/${opts.theme ?? 'light'}.json`, { terrain: opts.terrain });
   }
 
   tileJsonUrl(name: 'world' | 'region' | 'terrain'): string {
@@ -88,8 +88,8 @@ export class AiMapClient {
 
   // --- Search & elevation -----------------------------------------------------------------------
 
-  search(q: string, opts: { lang?: 'en' | 'ar'; limit?: number; types?: ('coordinates' | 'airport' | 'place')[] } = {}): Promise<SearchResultItem[]> {
-    return this.request('GET', '/search', { query: { q, lang: opts.lang, limit: opts.limit, types: opts.types?.join(',') } });
+  search(q: string, opts: { limit?: number; types?: ('coordinates' | 'airport' | 'place')[] } = {}): Promise<SearchResultItem[]> {
+    return this.request('GET', '/search', { query: { q, limit: opts.limit, types: opts.types?.join(',') } });
   }
 
   searchAirports(q: string, limit = 10): Promise<Airport[]> {

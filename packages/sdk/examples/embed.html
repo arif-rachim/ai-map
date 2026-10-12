@@ -24,7 +24,7 @@
     <button id="clear">Remove host markers</button>
     <button id="add">Save a pin at the map center (shared)</button>
     <button id="measure">Start distance measurement</button>
-    <button id="dark">Dark theme + Arabic labels</button>
+    <button id="dark">Dark theme</button>
     <h3>Events</h3>
     <div id="log"></div>
   </aside>
@@ -70,7 +70,7 @@
       await map.selectFeature(f.id);
     });
     run('measure', () => map.setTool('measure:distance'));
-    run('dark', () => map.setOptions({ theme: 'dark', labelLang: 'ar' }));
+    run('dark', () => map.setOptions({ theme: 'dark' }));
   </script>
 </body>
 </html>

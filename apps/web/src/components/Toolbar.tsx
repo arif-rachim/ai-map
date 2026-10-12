@@ -2,7 +2,6 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { CoordFormat, DistanceUnit, ThemePreference } from '@ai-map/shared';
 import { useStore } from '../store';
-import i18n, { applyDirection } from '../i18n';
 import { DRAW_ICONS, MEASURE_ICONS } from './icons';
 import { IconButton, Popover, Row, Section, Segmented, Switch } from './ui';
 import { useLayout } from './useLayout';
@@ -95,39 +94,20 @@ function MapOptions() {
         </Section>
       )}
 
-      {(has('theme') || has('labels') || has('ui')) && (
+      {has('theme') && (
         <Section title={t('options.appearance')}>
-          {has('theme') && (
-            <Row label={t('settings.theme')} stacked control="settings.theme">
-              <Segmented<ThemePreference>
-                label={t('settings.theme')}
-                value={s.theme}
-                onChange={s.setTheme}
-                options={[
-                  { value: 'auto', label: t('settings.auto') },
-                  { value: 'light', label: t('settings.light') },
-                  { value: 'dark', label: t('settings.dark') },
-                ]}
-              />
-            </Row>
-          )}
-          {has('ui') && (
-            <Row label={t('settings.ui')} stacked control="settings.ui">
-              <Segmented
-                label={t('settings.ui')}
-                value={s.uiLang}
-                onChange={(lang) => {
-                  s.setUiLang(lang);
-                  applyDirection(lang);
-                  void i18n.changeLanguage(lang);
-                }}
-                options={[
-                  { value: 'en', label: 'English' },
-                  { value: 'ar', label: 'العربية' },
-                ]}
-              />
-            </Row>
-          )}
+          <Row label={t('settings.theme')} stacked control="settings.theme">
+            <Segmented<ThemePreference>
+              label={t('settings.theme')}
+              value={s.theme}
+              onChange={s.setTheme}
+              options={[
+                { value: 'auto', label: t('settings.auto') },
+                { value: 'light', label: t('settings.light') },
+                { value: 'dark', label: t('settings.dark') },
+              ]}
+            />
+          </Row>
         </Section>
       )}
 

@@ -106,7 +106,6 @@
           <tr><td><code>center</code></td><td>Center point — <strong>longitude first, then latitude</strong></td><td><code>center=46.6753,24.7136</code></td></tr>
           <tr><td><code>zoom</code>, <code>bearing</code>, <code>pitch</code></td><td>Zoom 0–19, rotation (degrees), tilt 0–60</td><td><code>zoom=11&amp;pitch=45</code></td></tr>
           <tr><td><code>theme</code></td><td><code>auto</code> (follows the system), <code>light</code>, <code>dark</code></td><td><code>theme=dark</code></td></tr>
-          <tr><td><code>ui</code></td><td>Button/menu language: <code>en</code>, <code>ar</code> (map labels are always English)</td><td><code>ui=ar</code></td></tr>
           <tr><td><code>unit</code> / <code>coords</code></td><td>Distance <code>km|nm|mi</code> / coordinates <code>dd|dms|mgrs|utm</code></td><td><code>unit=nm&amp;coords=mgrs</code></td></tr>
           <tr><td><code>hillshade</code>, <code>contours</code>, <code>terrain3d</code></td><td>Relief, contours, 3D: <code>1</code> or <code>0</code></td><td><code>terrain3d=1</code></td></tr>
           <tr><td><code>controls</code></td><td>Visible components (see the table below)</td><td><code>controls=search,zoom</code></td></tr>
@@ -125,7 +124,7 @@
           <tr><td><code>draw</code></td><td><code>draw.point</code> <code>draw.line</code> <code>draw.rectangle</code> <code>draw.polygon</code> <code>draw.circle</code> <code>draw.text</code> <code>draw.milsymbol</code></td></tr>
           <tr><td><code>measure</code></td><td><code>measure.distance</code> <code>measure.area</code> <code>measure.rings</code></td></tr>
           <tr><td><code>terrain</code></td><td><code>terrain.hillshade</code> <code>terrain.contours</code> <code>terrain.3d</code></td></tr>
-          <tr><td><code>settings</code></td><td><code>settings.unit</code> <code>settings.coords</code> <code>settings.theme</code> <code>settings.ui</code></td></tr>
+          <tr><td><code>settings</code></td><td><code>settings.unit</code> <code>settings.coords</code> <code>settings.theme</code></td></tr>
           <tr><td><code>layers</code>, <code>status</code></td><td>Layer panel; status pill (coordinates, elevation, zoom)</td></tr>
           <tr><td><code>zoom</code>, <code>compass</code>, <code>scale</code></td><td>Zoom buttons, compass, scale bar</td></tr>
           <tr><td><code>featurePanel</code>, <code>select</code>, <code>notices</code></td><td>Object detail panel; selecting objects by clicking; notifications</td></tr>
@@ -150,7 +149,6 @@
           <fieldset>
             <legend>Appearance</legend>
             <label>Theme <select name="theme"><option value="">Automatic</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
-            <label>Interface language <select name="ui"><option value="">English</option><option value="ar">العربية</option></select></label>
             <label>Unit <select name="unit"><option value="">km</option><option value="nm">NM</option><option value="mi">mi</option></select></label>
             <label>3D relief <select name="terrain3d"><option value="">No</option><option value="1">Yes</option></select></label>
           </fieldset>
@@ -335,7 +333,7 @@ curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
       const f = new FormData(form);
       const [center, zoom] = f.get('place').split('|');
       const params = { center: center.split(',').map(Number), zoom: Number(zoom) };
-      for (const k of ['pitch', 'theme', 'ui', 'unit']) if (f.get(k)) params[k] = k === 'pitch' ? Number(f.get(k)) : f.get(k);
+      for (const k of ['pitch', 'theme', 'unit']) if (f.get(k)) params[k] = k === 'pitch' ? Number(f.get(k)) : f.get(k);
       if (f.get('terrain3d')) params.terrain3d = true;
       if (f.get('readonly')) params.readonly = true;
       if (f.get('interactive')) params.interactive = false;

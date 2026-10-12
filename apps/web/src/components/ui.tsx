@@ -105,9 +105,7 @@ export function Popover(props: {
     if (!open || !anchor.current) return;
     const place = () => {
       const r = anchor.current!.getBoundingClientRect();
-      const rtl = document.documentElement.dir === 'rtl';
-      const alignEnd = (props.align ?? 'end') === 'end' ? !rtl : rtl;
-      const left = alignEnd ? r.right - width : r.left;
+      const left = (props.align ?? 'end') === 'end' ? r.right - width : r.left;
       setPos({ top: r.bottom + 8, left: Math.max(8, Math.min(innerWidth - width - 8, left)) });
     };
     place();

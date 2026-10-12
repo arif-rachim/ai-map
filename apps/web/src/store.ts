@@ -3,7 +3,7 @@ import { parseEmbedUrl, resolveControls, type EmbedUrlParams, type MarkerInput }
 import type { DataCapabilities, MapFeature, MapLayer, ServerMessage } from '@ai-map/shared';
 import type { CoordFormat } from '@ai-map/shared';
 import type { DistanceUnit } from '@ai-map/shared';
-import type { LabelLang, Theme } from './lib/basemap';
+import type { Theme } from './lib/basemap';
 import type { ThemePreference } from '@ai-map/shared';
 
 export type DrawTool = 'rectangle' | 'polygon' | 'circle' | 'line' | 'point' | 'text' | 'milsymbol';
@@ -78,8 +78,6 @@ interface State {
   tool: Tool;
   unit: DistanceUnit;
   coordFormat: CoordFormat;
-  uiLang: 'en' | 'ar';
-  labelLang: LabelLang;
   /** Preference (auto follows the OS); `resolvedTheme` is what is rendered. */
   theme: ThemePreference;
   resolvedTheme: Theme;
@@ -123,8 +121,6 @@ interface State {
   setTool: (t: Tool) => void;
   setUnit: (u: DistanceUnit) => void;
   setCoordFormat: (f: CoordFormat) => void;
-  setUiLang: (l: 'en' | 'ar') => void;
-  setLabelLang: (l: LabelLang) => void;
   setTheme: (t: ThemePreference) => void;
   setSidebarOpen: (open: boolean) => void;
   confirm: (d: Omit<ConfirmDialog, 'resolve'>) => Promise<boolean>;
@@ -153,8 +149,6 @@ export const useStore = create<State>((set, get) => ({
   tool: { type: 'none' },
   unit: embed.params.unit ?? loadPref<DistanceUnit>('unit', 'km'),
   coordFormat: embed.params.coords ?? loadPref<CoordFormat>('coordFormat', 'dd'),
-  uiLang: embed.params.ui ?? loadPref<'en' | 'ar'>('uiLang', 'en'),
-  labelLang: embed.params.lang ?? loadPref<LabelLang>('labelLang', 'en'),
   theme: embed.params.theme ?? loadPref<ThemePreference>('theme', 'auto'),
   resolvedTheme: resolveTheme(embed.params.theme ?? loadPref<ThemePreference>('theme', 'auto')),
   sidebarOpen: embed.enabled ? true : loadPref<string>('sidebarOpen', typeof innerWidth === 'number' && innerWidth < 760 ? 'false' : 'true') === 'true',
@@ -253,8 +247,6 @@ export const useStore = create<State>((set, get) => ({
   setTool: (tool) => set((s) => ({ tool, editingId: null, measure: { ...s.measure, coords: null, center: null } })),
   setUnit: (unit) => (savePref('unit', unit), set({ unit })),
   setCoordFormat: (coordFormat) => (savePref('coordFormat', coordFormat), set({ coordFormat })),
-  setUiLang: (uiLang) => (savePref('uiLang', uiLang), set({ uiLang })),
-  setLabelLang: (labelLang) => (savePref('labelLang', labelLang), set({ labelLang })),
   setTheme: (theme) => (savePref('theme', theme), set({ theme, resolvedTheme: resolveTheme(theme) })),
   setSidebarOpen: (sidebarOpen) => (savePref('sidebarOpen', String(sidebarOpen)), set({ sidebarOpen })),
   confirm: (d) =>

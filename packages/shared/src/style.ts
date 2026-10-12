@@ -4,7 +4,6 @@ import { layers, namedFlavor } from '@protomaps/basemaps';
 export type Theme = 'light' | 'dark';
 /** User preference; `auto` follows the operating system appearance. */
 export type ThemePreference = Theme | 'auto';
-export type LabelLang = 'en' | 'ar';
 
 export interface TerrainOptions {
   hillshade: boolean;
@@ -39,7 +38,6 @@ export interface TileSourceRef {
 
 export interface BasemapStyleOptions {
   theme: Theme;
-  lang: LabelLang;
   glyphs: string;
   /** Sprite base URL without theme suffix, e.g. https://host/data/assets/sprites/v4 */
   sprite: string;
@@ -51,8 +49,9 @@ export interface BasemapStyleOptions {
   terrainOptions: TerrainOptions;
 }
 
-function prefixed(source: string, theme: Theme, lang: LabelLang, dropBackground: boolean): LayerSpecification[] {
-  return layers(source, namedFlavor(theme), { lang })
+/** Labels are always English. */
+function prefixed(source: string, theme: Theme, dropBackground: boolean): LayerSpecification[] {
+  return layers(source, namedFlavor(theme), { lang: 'en' })
     .filter((l) => !(dropBackground && l.type === 'background'))
     .map((l) => ({ ...l, id: `${source}:${l.id}` }) as LayerSpecification);
 }
@@ -73,15 +72,15 @@ export function isBasemapLayerId(id: string): boolean {
 export function buildBasemapStyle(o: BasemapStyleOptions): StyleSpecification {
   const sources: StyleSpecification['sources'] = {};
   const styleLayers: LayerSpecification[] = [];
-  const { theme, lang } = o;
+  const { theme } = o;
 
   if (o.world) {
     sources.world = vectorSource(o.world, BASEMAP_ATTRIBUTION);
-    styleLayers.push(...prefixed('world', theme, lang, false));
+    styleLayers.push(...prefixed('world', theme, false));
   }
   if (o.region) {
     sources.region = vectorSource(o.region, BASEMAP_ATTRIBUTION);
-    styleLayers.push(...prefixed('region', theme, lang, !!o.world));
+    styleLayers.push(...prefixed('region', theme, !!o.world));
   }
   if (!o.world && !o.region) {
     styleLayers.push({ id: 'background', type: 'background', paint: { 'background-color': theme === 'dark' ? '#1f2937' : '#e5e7eb' } });

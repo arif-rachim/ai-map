@@ -69,14 +69,13 @@ export async function tileRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/styles/:theme.json', async (req, reply) => {
     const { theme } = parse(z.object({ theme: z.enum(['light', 'dark']) }), req.params);
     const q = parse(
-      z.object({ lang: z.enum(['en', 'ar']).default('en'), terrain: z.enum(['none', 'hillshade', '3d']).default('hillshade') }),
+      z.object({ terrain: z.enum(['none', 'hillshade', '3d']).default('hillshade') }),
       req.query,
     );
     const base = publicBase(req);
     const [world, region, terrain] = await Promise.all(ARCHIVE_NAMES.map((n) => ctx.archives[n].header()));
     const style = buildBasemapStyle({
       theme,
-      lang: 'en', // Labels are always English; ?lang is accepted for compatibility but ignored.
       glyphs: `${base}/data/assets/fonts/{fontstack}/{range}.pbf`,
       sprite: `${base}/data/assets/sprites/v4`,
       world: world ? { url: `${base}/api/v1/tiles/world.json` } : undefined,

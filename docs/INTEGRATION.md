@@ -25,7 +25,7 @@ Plain URL, no JavaScript needed:
 | Parameter | Meaning |
 |---|---|
 | `center=lon,lat`, `zoom`, `bearing`, `pitch` | Initial view |
-| `theme=auto\|light\|dark`, `ui=en\|ar` (interface) | Appearance (map labels are always English; `lang` is accepted but ignored) |
+| `theme=auto\|light\|dark` | Appearance (interface and map labels are English only) |
 | `unit=km\|nm\|mi`, `coords=dd\|dms\|mgrs\|utm` | Units and coordinate format |
 | `hillshade=0\|1`, `contours=0\|1`, `terrain3d=0\|1` | Terrain display |
 | `controls=…` | Visible UI parts (see below; default all) |
@@ -43,7 +43,7 @@ Plain URL, no JavaScript needed:
 | `draw` | `draw.point`, `draw.line`, `draw.rectangle`, `draw.polygon`, `draw.circle`, `draw.text`, `draw.milsymbol` |
 | `measure` | `measure.distance`, `measure.area`, `measure.rings` |
 | `terrain` | `terrain.hillshade`, `terrain.contours`, `terrain.3d` |
-| `settings` | `settings.unit`, `settings.coords`, `settings.theme`, `settings.ui` |
+| `settings` | `settings.unit`, `settings.coords`, `settings.theme` |
 
 `controls=none` is a pure map; `controls=all,-draw.text,-status` (or just `-draw.text,-status`) shows everything except those; unknown names are ignored in the URL and rejected by `setControls`.
 
@@ -75,7 +75,7 @@ Embedded maps do not change the full app's saved preferences.
 </script>
 ```
 
-Commands (all return promises): `getView`, `setView`, `fitBounds`, `search`, `listLayers`, `listFeatures`, `addFeature`, `updateFeature`, `deleteFeature`, `selectFeature`, `setLayerVisible`, `setActiveLayer`, `setTool` (`none`, `draw:rectangle|polygon|circle|line|point|text|milsymbol`, `measure:distance|area|rings`), `setOptions` (theme, labelLang, uiLang, unit, coordFormat, hillshade, contours, terrain3d), `setMarkers`, `removeMarkers`, `setControls(controls?, readonly?)`, `getControls`, `setInteraction({ interactive, minZoom, maxZoom, maxBounds })`.
+Commands (all return promises): `getView`, `setView`, `fitBounds`, `search`, `listLayers`, `listFeatures`, `addFeature`, `updateFeature`, `deleteFeature`, `selectFeature`, `setLayerVisible`, `setActiveLayer`, `setTool` (`none`, `draw:rectangle|polygon|circle|line|point|text|milsymbol`, `measure:distance|area|rings`), `setOptions` (theme, unit, coordFormat, hillshade, contours, terrain3d), `setMarkers`, `removeMarkers`, `setControls(controls?, readonly?)`, `getControls`, `setInteraction({ interactive, minZoom, maxZoom, maxBounds })`.
 
 When no drawing layer exists, the first saved feature creates a layer named "Default".
 
@@ -102,9 +102,11 @@ map.on('load', async () => {
 });
 ```
 
-Styles: `/api/v1/styles/{light|dark}.json?terrain=none|hillshade|3d`. Labels are always English (`lang` is accepted for compatibility but ignored). Contour lines are generated in the browser by the full app and are not part of the style document.
+Styles: `/api/v1/styles/{light|dark}.json?terrain=none|hillshade|3d`. Labels are always English. Contour lines are generated in the browser by the full app and are not part of the style document.
 
 TypeScript types: `/sdk/aimap-sdk.d.ts`. With npm in a monorepo, depend on `packages/sdk` instead.
+
+> **Removed (English only):** the Arabic interface and every language option are gone: `ui`/`lang` in embed URLs, `uiLang`/`labelLang` in `setOptions`, the `settings.ui`/`settings.labels` controls (`setControls` now rejects them as unknown), and `lang` in the SDK `styleUrl()`/`search()` and in REST `/search` and `/styles`. The REST endpoints and embed URLs silently ignore a leftover `lang`/`ui` parameter.
 
 ## 3. REST API (any language)
 

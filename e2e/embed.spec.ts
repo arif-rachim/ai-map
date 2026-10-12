@@ -51,13 +51,11 @@ test.describe('embed URL parameters', () => {
   }
 
   test('appearance and units', async ({ page }) => {
-    const map = await host(page, { theme: 'dark', ui: 'ar', unit: 'nm', coords: 'mgrs', controls: ['scale', 'status', 'settings', 'terrain'] });
+    const map = await host(page, { theme: 'dark', unit: 'nm', coords: 'mgrs', controls: ['scale', 'status', 'settings', 'terrain'] });
     await expect(map.locator('.app')).toHaveAttribute('data-theme', 'dark');
-    await expect(map.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(map.locator('.maplibregl-ctrl-scale')).toContainText('nm');
     await map.locator('.map').hover();
     await expect(map.locator('.status-pill .coords')).toHaveText(/^\d{1,2}[A-Z] [A-Z]{2} \d{5} \d{5}$/);
-    // Arabic interface: the options button keeps its class, labels are translated.
     await map.locator('.options-button').click();
     await expect(map.locator('[data-control="settings.unit"] [aria-checked="true"]')).toHaveText('NM');
   });
@@ -179,9 +177,8 @@ test.describe('embed commands and events', () => {
   test('options, controls and interaction at runtime', async ({ page }) => {
     const map = await host(page);
     await map.locator('.search').waitFor();
-    await call(page, 'setOptions', { theme: 'dark', uiLang: 'ar', unit: 'mi' });
+    await call(page, 'setOptions', { theme: 'dark', unit: 'mi' });
     await expect(map.locator('.app')).toHaveAttribute('data-theme', 'dark');
-    await expect(map.locator('html')).toHaveAttribute('dir', 'rtl');
 
     expect(await call(page, 'setControls', ['none', 'zoom'], true)).toEqual({ controls: ['zoom'], readonly: true });
     await expect(map.locator('.search')).toHaveCount(0);

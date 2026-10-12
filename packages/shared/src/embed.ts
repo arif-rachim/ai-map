@@ -1,7 +1,7 @@
 import type { FeatureInput, FeaturePatch, MapFeature, MapLayer } from './schemas';
 import type { CoordFormat } from './coords';
 import type { DistanceUnit } from './measure';
-import type { LabelLang, ThemePreference } from './style';
+import type { ThemePreference } from './style';
 
 /**
  * postMessage protocol between a host page and the embedded map (<iframe src="/embed">).
@@ -42,8 +42,6 @@ export interface MarkerInput {
 
 export interface EmbedOptions {
   theme?: ThemePreference;
-  labelLang?: LabelLang;
-  uiLang?: 'en' | 'ar';
   unit?: DistanceUnit;
   coordFormat?: CoordFormat;
   hillshade?: boolean;
@@ -124,8 +122,6 @@ export interface EmbedUrlParams {
   bearing?: number;
   pitch?: number;
   theme?: ThemePreference;
-  lang?: LabelLang;
-  ui?: 'en' | 'ar';
   /** Visible drawing layers (others hidden). */
   layers?: string[];
   /** Visible UI controls; see `resolveControls` (groups, leaves like `draw.point`, `none`, `all`, `-exclusions`). Default: all. */
@@ -166,8 +162,6 @@ export function parseEmbedUrl(search: string): EmbedUrlParams {
     bearing: num('bearing'),
     pitch: num('pitch'),
     theme: pick('theme', ['auto', 'light', 'dark']),
-    lang: pick('lang', ['en', 'ar']),
-    ui: pick('ui', ['en', 'ar']),
     layers: list('layers'),
     controls: list('controls'),
     readonly: bool('readonly') ?? false,
@@ -188,7 +182,7 @@ export function buildEmbedUrl(base: string, p: EmbedUrlParams): string {
   const q = new URLSearchParams();
   if (p.center) q.set('center', p.center.join(','));
   for (const k of ['zoom', 'bearing', 'pitch', 'minZoom', 'maxZoom'] as const) if (p[k] !== undefined) q.set(k, String(p[k]));
-  for (const k of ['theme', 'lang', 'ui', 'unit', 'coords', 'select'] as const) if (p[k]) q.set(k, p[k]!);
+  for (const k of ['theme', 'unit', 'coords', 'select'] as const) if (p[k]) q.set(k, p[k]!);
   if (p.layers) q.set('layers', p.layers.join(','));
   // An empty list is meaningful (pure map), so it is written as "none".
   if (p.controls) q.set('controls', p.controls.length ? p.controls.join(',') : 'none');

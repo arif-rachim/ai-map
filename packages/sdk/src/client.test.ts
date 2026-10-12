@@ -31,7 +31,7 @@ describe('AiMapClient requests', () => {
     const c = new AiMapClient('http://maps.local');
     const L = '11111111-1111-4111-8111-111111111111';
     await c.capabilities();
-    await c.search('Riyadh', { lang: 'ar', limit: 3, types: ['airport', 'place'] });
+    await c.search('Riyadh', { limit: 3, types: ['airport', 'place'] });
     await c.searchAirports('DXB', 2);
     await c.airport('OMDB');
     expect(await c.elevation(42.5, 18.2)).toBe(123);
@@ -50,7 +50,7 @@ describe('AiMapClient requests', () => {
 
     expect(calls.map((x) => `${x.method} ${x.url.replace('http://maps.local/api/v1', '')}`)).toEqual([
       'GET /capabilities',
-      'GET /search?q=Riyadh&lang=ar&limit=3&types=airport%2Cplace',
+      'GET /search?q=Riyadh&limit=3&types=airport%2Cplace',
       'GET /airports/search?q=DXB&limit=2',
       'GET /airports/OMDB',
       'GET /elevation?lon=42.5&lat=18.2',
@@ -77,7 +77,7 @@ describe('AiMapClient requests', () => {
   it('builds resource URLs without requests', () => {
     const c = new AiMapClient('http://maps.local');
     expect(c.styleUrl()).toBe('http://maps.local/api/v1/styles/light.json');
-    expect(c.styleUrl({ theme: 'dark', lang: 'ar', terrain: '3d' })).toBe('http://maps.local/api/v1/styles/dark.json?lang=ar&terrain=3d');
+    expect(c.styleUrl({ theme: 'dark', terrain: '3d' })).toBe('http://maps.local/api/v1/styles/dark.json?terrain=3d');
     expect(c.tileJsonUrl('terrain')).toBe('http://maps.local/api/v1/tiles/terrain.json');
     expect(c.exportUrl('L', 'kml')).toBe('http://maps.local/api/v1/layers/L/export.kml');
   });

@@ -6,7 +6,7 @@ import { App } from './App';
 import { initI18n } from './i18n';
 import { useStore } from './store';
 
-await initI18n(useStore.getState().uiLang);
+await initI18n();
 
 if (import.meta.env.DEV) {
   // Debugging aid for development and browser tests only; stripped from production builds.

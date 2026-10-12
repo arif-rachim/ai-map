@@ -9,8 +9,6 @@ describe('embed URL', () => {
       bearing: 30,
       pitch: 45,
       theme: 'dark',
-      lang: 'ar',
-      ui: 'ar',
       layers: ['a', 'b'],
       controls: ['search', 'draw.point', '-status'],
       readonly: true,

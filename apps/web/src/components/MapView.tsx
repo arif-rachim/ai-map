@@ -38,11 +38,6 @@ function registerGlobals(caps: DataCapabilities) {
   if (caps.terrain && caps.terrainMaxzoom !== null) demSource(caps.terrainMaxzoom).setupMaplibre(maplibregl);
   maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
   maplibregl.addProtocol('pmtiles', new Protocol().tile);
-  try {
-    maplibregl.setRTLTextPlugin('/vendor/mapbox-gl-rtl-text.js', true);
-  } catch {
-    // already set (HMR)
-  }
 }
 
 const TD_MODE: Record<DrawTool | 'distance' | 'area' | 'rings', string> = {
@@ -151,17 +146,16 @@ export function MapView() {
   const container = useRef<HTMLDivElement>(null);
   const caps = useStore((s) => s.capabilities);
   const theme = useStore((s) => s.resolvedTheme);
-  const labelLang = useStore((s) => s.labelLang);
   const { t } = useTranslation();
 
   // Create the map once.
   useEffect(() => {
     if (!container.current || !caps) return;
     registerGlobals(caps);
-    const { resolvedTheme: theme, labelLang, hillshade, contours, terrain3d } = useStore.getState();
+    const { resolvedTheme: theme, hillshade, contours, terrain3d } = useStore.getState();
     const map = new maplibregl.Map({
       container: container.current,
-      style: buildStyle(theme, labelLang, caps, { hillshade, contours, terrain3d }),
+      style: buildStyle(theme, caps, { hillshade, contours, terrain3d }),
       pitch: embed.params.pitch ?? (terrain3d && caps.terrain ? 50 : 0),
       center: embed.params.center ?? [42, 25],
       zoom: embed.params.zoom ?? 3.6,
@@ -335,18 +329,17 @@ export function MapView() {
     };
   }, [caps]);
 
-  // Theme / label language: swap basemap layers, keep app sources and layers (incl. Terra Draw).
-  const appliedStyle = useRef(`${theme}|${labelLang}`);
+  // Theme: swap basemap layers, keep app sources and layers (incl. Terra Draw).
+  const appliedStyle = useRef(theme);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !caps) return;
     const apply = () => {
-      const { resolvedTheme: theme, labelLang, hillshade, contours, terrain3d } = useStore.getState();
-      const key = `${theme}|${labelLang}`;
-      if (key === appliedStyle.current) return;
+      const { resolvedTheme: theme, hillshade, contours, terrain3d } = useStore.getState();
+      if (theme === appliedStyle.current) return;
       if (!map.isStyleLoaded()) return void map.once('idle', apply);
-      appliedStyle.current = key;
-      map.setStyle(buildStyle(theme, labelLang, caps, { hillshade, contours, terrain3d }), {
+      appliedStyle.current = theme;
+      map.setStyle(buildStyle(theme, caps, { hillshade, contours, terrain3d }), {
         transformStyle: (prev, next): StyleSpecification => {
           if (!prev) return next;
           const keepSources = Object.fromEntries(Object.entries(prev.sources).filter(([k]) => !BASEMAP_SOURCES.has(k)));
@@ -356,7 +349,7 @@ export function MapView() {
       });
     };
     apply();
-  }, [theme, labelLang, caps]);
+  }, [theme, caps]);
 
   // Push store changes to map sources.
   useEffect(() => {

@@ -34,7 +34,7 @@
 
     const map = new maplibregl.Map({
       container: 'map',
-      style: client.styleUrl({ theme: 'light', lang: 'en', terrain: caps.terrain ? 'hillshade' : 'none' }),
+      style: client.styleUrl({ theme: 'light', terrain: caps.terrain ? 'hillshade' : 'none' }),
       center: [46.6753, 24.7136],
       zoom: 5,
     });

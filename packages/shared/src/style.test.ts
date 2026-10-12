@@ -3,7 +3,6 @@ import { buildBasemapStyle, isBasemapLayerId, type BasemapStyleOptions } from '.
 
 const base: BasemapStyleOptions = {
   theme: 'light',
-  lang: 'en',
   glyphs: 'http://h/fonts/{fontstack}/{range}.pbf',
   sprite: 'http://h/sprites/v4',
   world: { url: 'http://h/world.json' },

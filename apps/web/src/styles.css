@@ -4,8 +4,6 @@
  * monochrome symbols, one accent colour for selection/primary actions, system colours, concentric radii.
  */
 @import '@fontsource-variable/inter/index.css';
-@import '@fontsource/noto-sans-arabic/arabic-400.css';
-@import '@fontsource/noto-sans-arabic/arabic-600.css';
 
 :root {
   /* System colours (iOS/macOS light) */
@@ -40,7 +38,7 @@
   --control: 36px;
   --bar: 44px;
 
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', 'Noto Sans Arabic', system-ui, 'Segoe UI', sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', system-ui, 'Segoe UI', sans-serif;
   font-family: var(--font);
   font-size: 13px;
   line-height: 1.35;
@@ -90,7 +88,6 @@
 html, body, #root { margin: 0; height: 100%; overflow: hidden; }
 body { background: #e9e9ec; }
 button, input, select, textarea { font: inherit; color: inherit; }
-[dir='rtl'] .app { --font: 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Inter Variable', system-ui, sans-serif; }
 
 .app { position: relative; height: 100%; color: var(--label); font-family: var(--font); }
 .map { position: absolute; inset: 0; }
@@ -153,7 +150,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---- Search --------------------------------------------------------------------------------- */
 .search { position: relative; width: min(360px, calc(100vw - 2 * var(--gap) - 52px)); }
 .search-field { display: flex; align-items: center; gap: 6px; height: var(--bar); padding: 0 6px 0 14px; border-radius: 999px; }
-[dir='rtl'] .search-field { padding: 0 14px 0 6px; }
 .search-field svg { color: var(--label-2); flex: none; }
 .search-field input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; font-size: 15px; }
 .search-field input::placeholder { color: var(--label-3); }
@@ -174,7 +170,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---- Panels (sidebar, inspectors) ----------------------------------------------------------- */
 .panel { border-radius: var(--radius-panel); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .panel-header { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px 16px; }
-[dir='rtl'] .panel-header { padding: 14px 16px 8px 12px; }
 .panel-header h2 { flex: 1; margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-header .subtitle { display: block; font-size: 12px; font-weight: 400; color: var(--label-2); letter-spacing: 0; }
 .panel-body { overflow: auto; padding: 0 12px 12px; min-height: 0; }
@@ -202,7 +197,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .row textarea { resize: vertical; min-height: 56px; }
 .row select { appearance: none; padding-inline-end: 28px; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
-[dir='rtl'] .row select { background-position: 15px 55%, 10px 55%; }
 .row input.invalid { box-shadow: inset 0 0 0 1.5px var(--red); }
 .row input[type='color'] { width: 30px; height: 30px; padding: 0; border: 0.5px solid var(--separator); border-radius: 999px; background: none; cursor: pointer; overflow: hidden; }
 .row input[type='color']::-webkit-color-swatch-wrapper { padding: 0; }
@@ -221,12 +215,10 @@ fieldset.plain:disabled .row { opacity: 0.6; }
 .switch .knob { position: absolute; top: 2px; inset-inline-start: 2px; width: 22px; height: 22px; border-radius: 999px; background: #fff; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); transition: transform 180ms ease; }
 .switch.on { background: var(--green); }
 .switch.on .knob { transform: translateX(18px); }
-[dir='rtl'] .switch.on .knob { transform: translateX(-18px); }
 
 /* Layers */
 .layer-item { border-radius: var(--radius-row); }
 .layer-row { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 8px; border-radius: 10px; min-height: 40px; }
-[dir='rtl'] .layer-row { padding: 4px 8px 4px 4px; }
 .layer-row:hover { background: var(--hover); }
 .layer-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 6px 4px; text-align: start; cursor: pointer; font-weight: 590; }
 .layer-name .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -234,10 +226,8 @@ fieldset.plain:disabled .row { opacity: 0.6; }
 .layer-name .check { color: var(--accent); flex: none; }
 .chevron { color: var(--label-3); transition: transform 150ms ease; flex: none; }
 .chevron.open { transform: rotate(90deg); }
-[dir='rtl'] .chevron:not(.open) { transform: rotate(180deg); }
 .layer-row .rename-input { flex: 1; }
 .feature-list { list-style: none; margin: 0 0 6px; padding: 0 0 0 30px; }
-[dir='rtl'] .feature-list { padding: 0 30px 0 0; }
 .feature-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; text-align: start; cursor: pointer; }
 .feature-item:hover { background: var(--hover); }
 .feature-item.selected { background: color-mix(in srgb, var(--accent) 16%, transparent); }
@@ -319,14 +309,8 @@ fieldset.plain:disabled .row { opacity: 0.6; }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { z-index: 3; }
 .maplibregl-ctrl-bottom-right .maplibregl-ctrl, .maplibregl-ctrl-bottom-left .maplibregl-ctrl { margin: 0 var(--gap) var(--gap) 0; }
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl { margin: 0 0 var(--gap) var(--gap); }
-/* MapLibre corners are physical; mirror them for right-to-left layouts. */
-[dir='rtl'] .maplibregl-ctrl-bottom-right { right: auto; left: 0; }
-[dir='rtl'] .maplibregl-ctrl-bottom-left { left: auto; right: 0; }
-[dir='rtl'] .maplibregl-ctrl-bottom-right .maplibregl-ctrl { margin: 0 0 var(--gap) var(--gap); float: left; }
-[dir='rtl'] .maplibregl-ctrl-bottom-left .maplibregl-ctrl { margin: 0 var(--gap) var(--gap) 0; float: right; }
 /* The scale sits above the status pill when both are shown. */
 .app.has-status .maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale { margin-bottom: calc(var(--gap) + 44px); }
-.maplibregl-ctrl-scale { direction: ltr; }
 .maplibregl-ctrl-group:not(:empty) {
   background: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   border: 0.5px solid var(--glass-edge); box-shadow: var(--shadow-small); border-radius: 14px; overflow: hidden;

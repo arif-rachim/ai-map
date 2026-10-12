@@ -33,8 +33,8 @@ export const api = {
     request<MapFeature>('POST', '/api/v1/features', input),
   updateFeature: (id: string, patch: FeaturePatch) => request<MapFeature>('PATCH', `/api/v1/features/${id}`, patch),
   deleteFeature: (id: string) => request<void>('DELETE', `/api/v1/features/${id}`),
-  search: (q: string, lang: 'en' | 'ar', limit = 10, signal?: AbortSignal) =>
-    fetch(`/api/v1/search?${new URLSearchParams({ q, lang, limit: String(limit), types: 'airport,place' })}`, { signal }).then((r) =>
+  search: (q: string, limit = 10, signal?: AbortSignal) =>
+    fetch(`/api/v1/search?${new URLSearchParams({ q, limit: String(limit), types: 'airport,place' })}`, { signal }).then((r) =>
       r.ok ? (r.json() as Promise<SearchResultItem[]>) : [],
     ),
   airports: (q: string, limit = 5, signal?: AbortSignal) =>

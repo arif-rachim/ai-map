@@ -28,7 +28,7 @@ import { useStore } from '../store';
 import { initI18n } from '../i18n';
 
 beforeAll(async () => {
-  await initI18n('en');
+  await initI18n();
 });
 
 const layer = (id: string): MapLayer => ({ id, name: id, visible: true, sortOrder: 0, createdAt: '', updatedAt: '' });
@@ -183,21 +183,16 @@ describe('embed command handlers', () => {
   });
 
   it('applies options', () => {
-    h.setOptions({ theme: 'dark', labelLang: 'ar', unit: 'nm', coordFormat: 'mgrs', hillshade: false, contours: true, terrain3d: true, uiLang: 'ar' });
+    h.setOptions({ theme: 'dark', unit: 'nm', coordFormat: 'mgrs', hillshade: false, contours: true, terrain3d: true });
     expect(useStore.getState()).toMatchObject({
       theme: 'dark',
       resolvedTheme: 'dark',
-      labelLang: 'ar',
       unit: 'nm',
       coordFormat: 'mgrs',
       hillshade: false,
       contours: true,
       terrain3d: true,
-      uiLang: 'ar',
     });
-    expect(document.documentElement.dir).toBe('rtl');
-    h.setOptions({ uiLang: 'en', theme: 'light' });
-    expect(document.documentElement.dir).toBe('ltr');
   });
 
   it('merges, replaces and removes host markers', () => {

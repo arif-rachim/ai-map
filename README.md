@@ -1,6 +1,6 @@
 # AI Map — offline vector map for airgapped networks
 
-AI Map is a self-hosted web map for closed, airgapped networks, where online map services cannot be reached. It serves a detailed vector basemap for the GCC, North Africa, the Levant, Iraq, Iran, Turkey, Yemen and Sudan (plus the rest of the world at low detail), and adds search for places, addresses, airports and coordinates, distance and area measurement with elevation profiles, terrain (hillshade, contours and 3D), and shared real-time drawing with MIL-STD-2525D/E military symbols. All map data is prepared in advance on an internet-connected build machine, packed into a transfer bundle and installed on the offline server with one script, so no request ever leaves the server at run time. The frontend is React with MapLibre GL reading PMTiles, the backend is Fastify on PostgreSQL/PostGIS with a Photon geocoder, and the whole stack runs in Docker Compose behind nginx. Other applications can embed the map in an iframe, drive it through a JavaScript SDK, or use its REST, WebSocket, TileJSON and OGC API - Features endpoints. The interface is available in English and Arabic (right-to-left).
+AI Map is a self-hosted web map for closed, airgapped networks, where online map services cannot be reached. It serves a detailed vector basemap for the GCC, North Africa, the Levant, Iraq, Iran, Turkey, Yemen and Sudan (plus the rest of the world at low detail), and adds search for places, addresses, airports and coordinates, distance and area measurement with elevation profiles, terrain (hillshade, contours and 3D), and shared real-time drawing with MIL-STD-2525D/E military symbols. All map data is prepared in advance on an internet-connected build machine, packed into a transfer bundle and installed on the offline server with one script, so no request ever leaves the server at run time. The frontend is React with MapLibre GL reading PMTiles, the backend is Fastify on PostgreSQL/PostGIS with a Photon geocoder, and the whole stack runs in Docker Compose behind nginx. Other applications can embed the map in an iframe, drive it through a JavaScript SDK, or use its REST, WebSocket, TileJSON and OGC API - Features endpoints.
 
 > Status: early development (single initial commit, September 2026). The API has no authentication and is meant for a trusted LAN.
 
@@ -13,7 +13,7 @@ AI Map is a self-hosted web map for closed, airgapped networks, where online map
 - Shared drawing layers stored in PostGIS; changes are broadcast to all open clients over WebSocket
 - MIL-STD-2525D/E symbols rendered with milsymbol
 - Import GeoJSON into a layer; export a layer as GeoJSON or KML
-- English and Arabic UI with right-to-left layout (map labels and search results are always in English)
+- English-only interface, map labels and search results
 - Integration: iframe embed with a postMessage SDK, REST API with OpenAPI docs, WebSocket events, TileJSON/vector tiles and OGC API - Features
 - Deployment as one self-contained bundle installed with `sudo ./install.sh`; update bundles for app code or map data only
 
@@ -24,7 +24,7 @@ TypeScript · React · MapLibre GL · PMTiles · Terra Draw · turf · milsymbol
 
 | Part | Tech |
 |---|---|
-| `apps/web` | React + MapLibre GL + PMTiles, Terra Draw, turf, milsymbol, i18next (EN/AR, RTL) |
+| `apps/web` | React + MapLibre GL + PMTiles, Terra Draw, turf, milsymbol, i18next (English) |
 | `apps/api` | Fastify + PostgreSQL/PostGIS: `/api/v1` REST + OpenAPI, WebSocket events, unified search, elevation, tiles/styles, OGC API - Features |
 | `packages/shared` | Schemas, coordinates, measurement, basemap style builder, elevation sampling, GeoJSON/KML, embed protocol |
 | `packages/sdk` | `aimap-sdk.js` for other apps: REST/WebSocket client, iframe embed controller, MapLibre drawings layer |

@@ -20,7 +20,6 @@ import { ensureLayerId } from './layers';
 import { DRAW_TOOLS, MEASURE_TOOLS } from './layout';
 import { mapRef, whenMapReady } from '../mapRef';
 import { useStore, type DrawTool, type MeasureTool, type Tool } from '../store';
-import i18n, { applyDirection } from '../i18n';
 
 type Handler<K extends EmbedCommandName> = (params: EmbedCommands[K]['params']) => Promise<EmbedCommands[K]['result']> | EmbedCommands[K]['result'];
 
@@ -61,7 +60,7 @@ export const embedHandlers: { [K in EmbedCommandName]: Handler<K> } = {
     requireMap().fitBounds(p.bounds, { padding: p.padding ?? 40, maxZoom: p.maxZoom ?? 16, duration: 800 });
   },
   search: async ({ q, limit }) => {
-    const res = await fetch(`/api/v1/search?${new URLSearchParams({ q, lang: useStore.getState().uiLang, limit: String(limit ?? 10) })}`);
+    const res = await fetch(`/api/v1/search?${new URLSearchParams({ q, limit: String(limit ?? 10) })}`);
     if (!res.ok) throw new Error(`Search failed (${res.status})`);
     return (await res.json()) as SearchResultItem[];
   },
@@ -106,15 +105,9 @@ export const embedHandlers: { [K in EmbedCommandName]: Handler<K> } = {
   setOptions: (o) => {
     const s = useStore.getState();
     if (o.theme) s.setTheme(o.theme);
-    if (o.labelLang) s.setLabelLang(o.labelLang);
     if (o.unit) s.setUnit(o.unit);
     if (o.coordFormat) s.setCoordFormat(o.coordFormat);
     for (const k of ['hillshade', 'contours', 'terrain3d'] as const) if (o[k] !== undefined) s.setTerrainOption(k, o[k]!);
-    if (o.uiLang) {
-      s.setUiLang(o.uiLang);
-      applyDirection(o.uiLang);
-      void i18n.changeLanguage(o.uiLang);
-    }
   },
   setMarkers: ({ markers, replace }) => {
     const s = useStore.getState();

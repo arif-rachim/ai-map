@@ -29,9 +29,10 @@ export function dedupePlaces(items: SearchResultItem[]): SearchResultItem[] {
   return kept;
 }
 
-async function photonSearch(q: string, lang: string, limit: number): Promise<SearchResultItem[]> {
+/** Place names come back in English. */
+async function photonSearch(q: string, limit: number): Promise<SearchResultItem[]> {
   // Ask for extra results so de-duplication still fills the requested limit.
-  const res = await fetch(`${config.photonUrl}/api?${new URLSearchParams({ q, lang, limit: String(Math.min(50, limit * 2)) })}`, {
+  const res = await fetch(`${config.photonUrl}/api?${new URLSearchParams({ q, lang: 'en', limit: String(Math.min(50, limit * 2)) })}`, {
     signal: AbortSignal.timeout(5000),
   }).catch(() => null);
   if (!res?.ok) return [];
@@ -58,7 +59,6 @@ export async function serviceRoutes(app: FastifyInstance, ctx: AppContext) {
     const q = parse(
       z.object({
         q: z.string().min(1).max(200),
-        lang: z.enum(['en', 'ar']).default('en'),
         limit: z.coerce.number().int().min(1).max(50).default(10),
         types: z
           .string()
@@ -73,7 +73,7 @@ export async function serviceRoutes(app: FastifyInstance, ctx: AppContext) {
     if (!coord && q.q.trim().length >= 2) {
       const [airports, places] = await Promise.all([
         q.types.has('airport') ? searchAirports(q.q, Math.min(5, q.limit)) : [],
-        q.types.has('place') ? photonSearch(q.q, 'en', q.limit) : [],
+        q.types.has('place') ? photonSearch(q.q, q.limit) : [],
       ]);
       const airportItems: SearchResultItem[] = airports.map((a) => ({
         type: 'airport',

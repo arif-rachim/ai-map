@@ -37,7 +37,6 @@ export function SearchBox() {
   const [loading, setLoading] = useState(false);
   const geocoderOn = useStore((s) => s.capabilities?.geocoder ?? false);
   const coordFormat = useStore((s) => s.coordFormat);
-  const uiLang = useStore((s) => s.uiLang);
   const boxRef = useRef<HTMLDivElement>(null);
 
   const coord = useMemo(() => parseCoordinates(q), [q]);
@@ -52,7 +51,7 @@ export function SearchBox() {
     const timer = setTimeout(async () => {
       setLoading(true);
       // Same unified search other applications use (GET /api/v1/search); coordinates are parsed locally above.
-      const r = await api.search(term, uiLang, 12, ctrl.signal).catch(() => []);
+      const r = await api.search(term, 12, ctrl.signal).catch(() => []);
       if (ctrl.signal.aborted) return;
       setResults(r);
       setActive(0);
@@ -62,7 +61,7 @@ export function SearchBox() {
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [q, coord, uiLang]);
+  }, [q, coord]);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => boxRef.current && !boxRef.current.contains(e.target as Node) && setOpen(false);

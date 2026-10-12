@@ -49,12 +49,11 @@ This shows the full map with every tool, the same as the main application (`http
 | Parameter | Values |
 |---|---|
 | `theme` | `auto` (follows the system), `light`, `dark` |
-| `ui` | Button/menu language: `en`, `ar` (Arabic switches to right-to-left) |
 | `unit` | Distance unit: `km`, `nm`, `mi` |
 | `coords` | Coordinate format: `dd`, `dms`, `mgrs`, `utm` |
 | `hillshade`, `contours`, `terrain3d` | `1` or `0` |
 
-Map labels are always in English. The old `lang` parameter is still accepted but ignored.
+The interface and map labels are English only.
 
 ### A4. Choosing visible components (`controls`)
 
@@ -66,7 +65,7 @@ Without `controls`, every component is shown. With `controls`, **only the listed
 | `draw` | `draw.point`, `draw.line`, `draw.rectangle`, `draw.polygon`, `draw.circle`, `draw.text`, `draw.milsymbol` |
 | `measure` | `measure.distance`, `measure.area`, `measure.rings` |
 | `terrain` | `terrain.hillshade`, `terrain.contours`, `terrain.3d` |
-| `settings` | `settings.unit`, `settings.coords`, `settings.theme`, `settings.ui` |
+| `settings` | `settings.unit`, `settings.coords`, `settings.theme` |
 | `layers` | Layer list panel |
 | `status` | Status pill (cursor coordinates, elevation, zoom) |
 | `zoom`, `compass`, `scale` | Zoom buttons, compass, scale bar |

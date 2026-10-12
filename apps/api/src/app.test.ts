@@ -155,7 +155,7 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     expect((await app.inject({ url: '/api/v1/docs' })).statusCode).toBeLessThan(400);
     const caps = (await app.inject({ url: '/api/v1/capabilities' })).json();
     if (!caps.region) return t.skip('region.pmtiles not installed in DATA_DIR');
-    const style = (await app.inject({ url: '/api/v1/styles/dark.json?lang=ar', headers: { host: 'maps.local:8080' } })).json();
+    const style = (await app.inject({ url: '/api/v1/styles/dark.json', headers: { host: 'maps.local:8080' } })).json();
     expect(style.version).toBe(8);
     expect(style.sources.region.url).toBe('http://maps.local:8080/api/v1/tiles/region.json');
     const tj = (await app.inject({ url: '/api/v1/tiles/region.json', headers: { host: 'maps.local:8080' } })).json();

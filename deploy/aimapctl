@@ -4,6 +4,8 @@
 #   aimapctl status              services and health
 #   aimapctl health              API capabilities (what data is installed)
 #   aimapctl logs [service]      follow logs (web, api, db, photon)
+#   aimapctl access [--slow MS] [--tail N]
+#                                follow the request log: client IP, method, path, status, time in container
 #   aimapctl start|stop|restart
 #   aimapctl backup [file]       dump drawings (PostgreSQL) to a file
 #   aimapctl restore <file>      restore drawings from a backup (replaces current drawings)
@@ -35,6 +37,31 @@ case "$cmd" in
     ;;
   logs)
     compose logs -f --tail=200 "$@"
+    ;;
+  access)
+    # nginx (web) writes one JSON line per request; duration_ms = first byte in to last byte out of the
+    # container, upstream_ms = time spent in the API (only for /api/ requests).
+    slow=0; tail=100
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --slow) slow="$2"; shift 2 ;;
+        --tail) tail="$2"; shift 2 ;;
+        *) echo "usage: aimapctl access [--slow MS] [--tail N]" >&2; exit 2 ;;
+      esac
+    done
+    printf '%-25s %-15s %-7s %3s %8s %8s  %s\n' TIME CLIENT METHOD ST TOTAL_MS API_MS URI
+    compose logs -f --no-log-prefix --tail="$tail" web 2>/dev/null | grep --line-buffered '^{"time"' |
+      if command -v jq >/dev/null; then
+        jq -r --unbuffered --argjson slow "$slow" 'select((.duration_ms // 0) >= $slow)
+          | [.time, .client_ip, .method, (.status|tostring), (.duration_ms // "-"|tostring), (.upstream_ms // "-"|tostring), .uri] | @tsv' |
+          while IFS=$'\t' read -r t ip m st d u uri; do printf '%-25s %-15s %-7s %3s %8s %8s  %s\n' "$t" "$ip" "$m" "$st" "$d" "$u" "$uri"; done
+      else
+        sed -u -n 's/^{"time":"\([^"]*\)","client_ip":"\([^"]*\)","lb_ip":"[^"]*","method":"\([^"]*\)","uri":"\(\([^"\\]\|\\.\)*\)","status":\([0-9]*\),"duration_ms":\([^,]*\),"upstream_ms":\([^,]*\),.*/\1\t\2\t\3\t\6\t\7\t\8\t\4/p' |
+          while IFS=$'\t' read -r t ip m st d u uri; do
+            [[ "$d" =~ ^[0-9]+$ ]] && (( d < slow )) && continue
+            printf '%-25s %-15s %-7s %3s %8s %8s  %s\n' "$t" "$ip" "$m" "$st" "$d" "${u/null/-}" "$uri"
+          done
+      fi
     ;;
   start) compose up -d ;;
   stop) compose stop ;;
@@ -71,6 +98,6 @@ case "$cmd" in
       echo "containers removed; drawings (volume) and map data kept. Use --purge to delete them."
     fi
     ;;
-  -h|--help|help) sed -n '2,12p' "$0" ;;
+  -h|--help|help) sed -n '2,14p' "$0" ;;
   *) echo "unknown command: $cmd (see aimapctl help)" >&2; exit 2 ;;
 esac

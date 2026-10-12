@@ -3,7 +3,8 @@
 #
 #   sudo ./install.sh                    install or update with defaults (port 80, /opt/aimap)
 #   sudo ./install.sh --port 8080        other HTTP port
-#   options: --port N  --app-dir DIR  --data-root DIR  --public-url URL  --photon-heap 4g  --skip-verify  --yes
+#   options: --port N  --app-dir DIR  --data-root DIR  --public-url URL (default https://map.jac.mil.ae)
+#            --photon-heap 4g  --skip-verify  --yes
 #
 # Safe to re-run: drawings in the database are never touched; an existing .env (passwords) is kept.
 set -euo pipefail
@@ -13,6 +14,7 @@ APP_DIR=/opt/aimap
 DATA_ROOT=""
 PORT=""
 PUBLIC_URL=""
+DEFAULT_PUBLIC_URL=https://map.jac.mil.ae
 PHOTON_HEAP=""
 VERIFY=1
 ASSUME_YES=0
@@ -26,7 +28,7 @@ while [[ $# -gt 0 ]]; do
     --photon-heap) PHOTON_HEAP="$2"; shift 2 ;;
     --skip-verify) VERIFY=0; shift ;;
     --yes|-y) ASSUME_YES=1; shift ;;
-    -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
     *) echo "unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -174,8 +176,8 @@ PHOTON_HEAP=$PHOTON_HEAP
 # UID/GID owning DATA_ROOT/photon (the geocoder writes runtime files there).
 AIMAP_UID=1000
 AIMAP_GID=1000
-# Optional base URL used in API links (TileJSON, styles, OGC), e.g. http://maps.example.local
-PUBLIC_URL=$PUBLIC_URL
+# Base URL used in API links (TileJSON, styles, OGC). TLS is terminated by the load balancer in front.
+PUBLIC_URL=${PUBLIC_URL:-$DEFAULT_PUBLIC_URL}
 AIMAP_VERSION=latest
 ENV
   chmod 600 "$APP_DIR/.env"
@@ -183,7 +185,11 @@ ENV
 else
   set_env HTTP_PORT "$PORT"
   set_env DATA_ROOT "$DATA_ROOT"
-  [[ -n "$PUBLIC_URL" ]] && set_env PUBLIC_URL "$PUBLIC_URL"
+  if [[ -n "$PUBLIC_URL" ]]; then
+    set_env PUBLIC_URL "$PUBLIC_URL"
+  elif [[ -z "$(sed -n 's/^PUBLIC_URL=//p' "$APP_DIR/.env")" ]]; then
+    set_env PUBLIC_URL "$DEFAULT_PUBLIC_URL"   # fill an empty value from older installs; never override a set one
+  fi
   [[ -n "$PHOTON_HEAP" ]] && set_env PHOTON_HEAP "$PHOTON_HEAP"
   ok "kept existing .env (passwords unchanged)"
 fi
@@ -268,12 +274,13 @@ suffix=$([[ "$PORT" == 80 ]] && echo "" || echo ":$PORT")
 for ip in ${ips:-127.0.0.1}; do
   echo "    Map:          http://$ip$suffix/map"
 done
+[[ -n "${PUBLIC_URL:-}" ]] && echo "    Public URL:   ${PUBLIC_URL%/}/map   (through the load balancer)"
 first_ip=$(echo "${ips:-127.0.0.1}" | head -1)
 echo "    Start page:   http://$first_ip$suffix/   (tutorial and documentation)"
 echo "    API docs:     http://$first_ip$suffix/api/v1/docs/"
 echo "    Integration:  http://$first_ip$suffix/sdk/examples/"
 echo
-echo "    Manage with:  aimapctl status | logs | restart | backup | health   (in $APP_DIR)"
+echo "    Manage with:  aimapctl status | logs | access | restart | backup | health   (in $APP_DIR)"
 if (( ${#WARNINGS[@]} )); then
   echo
   echo "${Y}Warnings:${N}"

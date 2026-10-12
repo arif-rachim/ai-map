@@ -170,7 +170,7 @@ test.describe('full app', () => {
     await other.close();
   });
 
-  test('map display options: appearance override, units and Arabic RTL', async ({ page }) => {
+  test('map display options: appearance override and units (English only)', async ({ page }) => {
     await openMap(page);
     await page.locator('.options-button').click();
     const options = page.getByRole('dialog', { name: 'Map display' });
@@ -178,14 +178,10 @@ test.describe('full app', () => {
     await expect(page.locator('.app')).toHaveAttribute('data-theme', 'dark');
     await options.locator('[data-control="settings.unit"]').getByRole('radio', { name: 'NM' }).click();
     await expect(page.locator('.maplibregl-ctrl-scale')).toContainText('nm');
-    await options.locator('[data-control="settings.ui"]').getByRole('radio', { name: 'العربية' }).click();
-    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-    // Mirrored layout: zoom controls move to the left, status pill to the right.
-    await page.keyboard.press('Escape');
-    const zoom = (await page.locator('.maplibregl-ctrl-group').first().boundingBox())!;
-    const pill = (await page.locator('.status-pill').boundingBox())!;
-    expect(zoom.x).toBeLessThan(200);
-    expect(pill.x + pill.width).toBeGreaterThan(1200);
+    // No interface language choice: the app is English, left-to-right.
+    await expect(options.locator('[data-control="settings.ui"]')).toHaveCount(0);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   });
 
   test('follows the system appearance by default', async ({ browser, baseURL }) => {

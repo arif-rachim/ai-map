@@ -1,9 +1,17 @@
 name: aimap
 
+# Rotate container logs (incl. the web access log) so they cannot fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 50m
+    max-file: "10"
+
 services:
   db:
     image: postgis/postgis:16-3.5
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_USER: aimap
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aimap}
@@ -19,6 +27,7 @@ services:
   api:
     image: aimap-api:${AIMAP_VERSION:-latest}
     restart: unless-stopped
+    logging: *logging
     depends_on:
       db:
         condition: service_healthy
@@ -26,8 +35,9 @@ services:
       DATABASE_URL: postgres://aimap:${POSTGRES_PASSWORD:-aimap}@db:5432/aimap
       PHOTON_URL: http://photon:2322
       DATA_DIR: /data
-      # Optional fixed base URL for links in TileJSON / styles / OGC responses (default: derived from the request).
-      PUBLIC_URL: ${PUBLIC_URL:-}
+      # Base URL for links in TileJSON / styles / OGC responses. https also works for plain-http clients,
+      # while http links would be blocked as mixed content on https pages. Empty = derive from each request.
+      PUBLIC_URL: ${PUBLIC_URL-https://map.jac.mil.ae}
     volumes:
       - ${DATA_ROOT:-/opt/aimap/data}:/data:ro
     healthcheck:
@@ -41,6 +51,7 @@ services:
   photon:
     image: eclipse-temurin:21-jre
     restart: unless-stopped
+    logging: *logging
     user: "${AIMAP_UID:-1000}:${AIMAP_GID:-1000}"
     command: >
       java -Xmx${PHOTON_HEAP:-4g} -jar /data/photon.jar serve
@@ -59,6 +70,7 @@ services:
   web:
     image: aimap-web:${AIMAP_VERSION:-latest}
     restart: unless-stopped
+    logging: *logging
     depends_on:
       api:
         condition: service_healthy

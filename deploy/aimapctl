@@ -7,6 +7,7 @@
 #   aimapctl access [--slow MS] [--tail N]
 #                                follow the request log: client IP, method, path, status, time in container
 #   aimapctl start|stop|restart
+#   aimapctl admin               show the admin password and API token (from .env)
 #   aimapctl backup [file]       dump drawings (PostgreSQL) to a file
 #   aimapctl restore <file>      restore drawings from a backup (replaces current drawings)
 #   aimapctl version             installed bundles
@@ -63,6 +64,12 @@ case "$cmd" in
           done
       fi
     ;;
+  admin)
+    echo "Admin password (web app, lock button): ${ADMIN_PASSWORD:-<not set: editing disabled>}"
+    echo "API token (other applications):        ${ADMIN_API_TOKEN:-<not set>}"
+    echo "  use as header:  Authorization: Bearer <API token>"
+    echo "Change them in $APP_DIR/.env, then: aimapctl restart"
+    ;;
   start) compose up -d ;;
   stop) compose stop ;;
   restart) compose up -d && compose restart ;;
@@ -98,6 +105,6 @@ case "$cmd" in
       echo "containers removed; drawings (volume) and map data kept. Use --purge to delete them."
     fi
     ;;
-  -h|--help|help) sed -n '2,14p' "$0" ;;
+  -h|--help|help) sed -n '2,15p' "$0" ;;
   *) echo "unknown command: $cmd (see aimapctl help)" >&2; exit 2 ;;
 esac

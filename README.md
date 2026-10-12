@@ -2,7 +2,7 @@
 
 AI Map is a self-hosted web map for closed, airgapped networks, where online map services cannot be reached. It serves a detailed vector basemap for the GCC, North Africa, the Levant, Iraq, Iran, Turkey, Yemen and Sudan (plus the rest of the world at low detail), and adds search for places, addresses, airports and coordinates, distance and area measurement with elevation profiles, terrain (hillshade, contours and 3D), and shared real-time drawing with MIL-STD-2525D/E military symbols. All map data is prepared in advance on an internet-connected build machine, packed into a transfer bundle and installed on the offline server with one script, so no request ever leaves the server at run time. The frontend is React with MapLibre GL reading PMTiles, the backend is Fastify on PostgreSQL/PostGIS with a Photon geocoder, and the whole stack runs in Docker Compose behind nginx. Other applications can embed the map in an iframe, drive it through a JavaScript SDK, or use its REST, WebSocket, TileJSON and OGC API - Features endpoints.
 
-> Status: early development (single initial commit, September 2026). The API has no authentication and is meant for a trusted LAN.
+> Status: early development (September 2026). Everyone can view; only admins (one shared password, plus an API token for other applications) can create and edit layers and drawings. Meant for a trusted LAN.
 
 ## Features
 

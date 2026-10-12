@@ -88,6 +88,15 @@ TLS ends at the load balancer; it forwards plain HTTP to this server on `HTTP_PO
 - Do not add CORS headers at the load balancer: nginx already sends `Access-Control-Allow-Origin: *` (and `Access-Control-Allow-Private-Network`) on every response, and duplicated headers make browsers reject the response.
 - `PUBLIC_URL` in `/opt/aimap/.env` (default `https://map.jac.mil.ae`) is the base for links in TileJSON, styles and OGC responses. It is https because https links also work from http pages, while http links are blocked on https pages. Change it and run `aimapctl restart` if the name changes; set it empty to derive links from each request instead.
 
+### Admin access
+
+Everyone can view the map and load layers; only admins create, rename and delete layers and drawings.
+
+- `aimapctl admin` shows the admin password (web app: lock button in the toolbar) and the API token for other applications (`Authorization: Bearer <token>`).
+- Both live in `/opt/aimap/.env` (`ADMIN_PASSWORD`, `ADMIN_API_TOKEN`, `AUTH_SECRET`; generated on first install and kept on updates). To change one, edit `.env` and run `aimapctl restart`. Changing `ADMIN_PASSWORD` or `AUTH_SECRET` signs every admin out.
+- Admin sessions last 12 hours (`ADMIN_SESSION_HOURS`). After 10 wrong passwords from one address, login is blocked for 5 minutes.
+- Tokens travel in plain text over HTTP; use `https://map.jac.mil.ae` for admin work.
+
 ### Request log
 
 nginx (the only container that publishes a port) writes one JSON line per request to `docker logs aimap-web-1` (rotated at 10 × 50 MB per container):

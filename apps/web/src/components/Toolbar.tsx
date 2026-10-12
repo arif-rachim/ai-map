@@ -1,7 +1,9 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { LockKeyhole, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { CoordFormat, DistanceUnit, ThemePreference } from '@ai-map/shared';
-import { useStore } from '../store';
+import { login, logout } from '../lib/auth';
+import { embed, useStore } from '../store';
 import { DRAW_ICONS, MEASURE_ICONS } from './icons';
 import { IconButton, Popover, Row, Section, Segmented, Switch } from './ui';
 import { useLayout } from './useLayout';
@@ -12,10 +14,24 @@ export function Toolbar() {
   const tool = useStore((s) => s.tool);
   const setTool = useStore((s) => s.setTool);
   const layout = useLayout();
-  if (!layout.toolbar) return null;
+  const loginEnabled = useStore((s) => s.loginEnabled);
+  // The full app offers admin login; embedding pages pass a token with setAuthToken instead.
+  const showAdmin = loginEnabled && !embed.enabled;
+  if (!layout.toolbar && !showAdmin) return null;
 
   const isActive = (type: 'draw' | 'measure', kind: string) => tool.type === type && tool.kind === kind;
-  const toggle = (type: 'draw' | 'measure', kind: string) => setTool(isActive(type, kind) ? { type: 'none' } : ({ type, kind } as never));
+  const toggle = (type: 'draw' | 'measure', kind: string) => {
+    if (isActive(type, kind)) return setTool({ type: 'none' });
+    const s = useStore.getState();
+    // Drawings are saved into a loaded layer; point the user to the layer list first.
+    // (Layers requested by the URL or saved in this browser are still on their way: allow the tool.)
+    if (type === 'draw' && s.loadedLayerIds.length === 0 && !s.pendingLayerRequest?.length) {
+      s.notify(t('layers.needLayer'));
+      if (layout.layers) s.setSidebarOpen(true);
+      return;
+    }
+    setTool({ type, kind } as never);
+  };
 
   return (
     <div className="toolbar" role="toolbar" aria-label={t('tools.toolbar')}>
@@ -62,7 +78,83 @@ export function Toolbar() {
           </Popover>
         </div>
       )}
+      {showAdmin && <AdminButton />}
     </div>
+  );
+}
+
+function AdminButton() {
+  const { t } = useTranslation();
+  const admin = useStore((s) => s.admin);
+  return (
+    <div className="tool-group glass">
+      <Popover
+        label={t('admin.title')}
+        width={280}
+        trigger={({ open, toggle }) => (
+          <IconButton icon={admin ? ShieldCheck : LockKeyhole} label={t(admin ? 'admin.signedInShort' : 'admin.title')} pressed={open} onClick={toggle} className={`admin-button ${admin ? 'admin-on' : ''} ${open ? 'selected' : ''}`} />
+        )}
+      >
+        {(close) => <AdminPanel close={close} />}
+      </Popover>
+    </div>
+  );
+}
+
+function AdminPanel({ close }: { close: () => void }) {
+  const { t } = useTranslation();
+  const admin = useStore((s) => s.admin);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (admin) {
+    return (
+      <Section title={t('admin.title')} footer={t('admin.signedIn')}>
+        <Row>
+          <button type="button" className="button wide" onClick={() => (logout(), close())}>
+            {t('admin.logout')}
+          </button>
+        </Row>
+      </Section>
+    );
+  }
+  return (
+    <form
+      className="admin-login"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        try {
+          await login(password);
+          setPassword('');
+          close();
+        } catch (err) {
+          setError((err as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <Section title={t('admin.title')} footer={error ?? t('admin.hint')}>
+        <Row stacked>
+          <input
+            className="text-input"
+            type="password"
+            autoComplete="current-password"
+            autoFocus
+            placeholder={t('admin.password')}
+            aria-label={t('admin.password')}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button type="submit" className="button prominent wide" disabled={busy || !password}>
+            {t('admin.login')}
+          </button>
+        </Row>
+      </Section>
+    </form>
   );
 }
 

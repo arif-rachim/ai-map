@@ -6,7 +6,7 @@ import { api, ApiError } from '../lib/api';
 import { formatCoordinates } from '@ai-map/shared';
 import { circleParams, featureBounds, featureMetrics, roundGeometry } from '../lib/featureGeo';
 import { drawRef, mapRef } from '../mapRef';
-import { useStore } from '../store';
+import { canEdit, useStore } from '../store';
 import { SymbolPicker } from './SymbolPicker';
 import { ElevationProfile } from './ElevationProfile';
 import { KIND_ICONS } from './icons';
@@ -38,7 +38,7 @@ export function FeaturePanel() {
   const unit = useStore((s) => s.unit);
   const coordFormat = useStore((s) => s.coordFormat);
   const editingId = useStore((s) => s.editingId);
-  const readonly = useStore((s) => s.readonly);
+  const readonly = !useStore(canEdit);
   const s = useStore.getState();
 
   // Local draft for text inputs, flushed on blur / after typing pause.

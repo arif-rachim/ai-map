@@ -57,6 +57,17 @@ function loadPref<T extends string>(key: string, fallback: T): T {
   }
 }
 
+/**
+ * Layers to load at start: `?layers=` (ids or names; /embed and /map), else the last choice in this browser (/map).
+ * Names are resolved to ids once the layer list arrives.
+ */
+function initialLayerRequest(): string[] {
+  if (embed.enabled) return embed.params.layers ?? [];
+  const fromUrl = new URLSearchParams(location.search).get('layers');
+  if (fromUrl !== null) return fromUrl.split(',').map((x) => x.trim()).filter(Boolean);
+  return loadPref('loadedLayers', '').split(',').filter(Boolean);
+}
+
 export function savePref(key: string, value: string): void {
   if (embed.enabled) return; // embedded maps must not change the full app's saved preferences
   try {
@@ -71,7 +82,10 @@ interface State {
   online: boolean;
   layers: MapLayer[];
   features: Record<string, MapFeature>;
-  hiddenLayerIds: string[];
+  /** Layers whose drawings are loaded and shown (the rest are only listed). */
+  loadedLayerIds: string[];
+  /** Requested layers (ids or names) not yet matched against the layer list. */
+  pendingLayerRequest: string[] | null;
   activeLayerId: string | null;
   selectedId: string | null;
   editingId: string | null;
@@ -97,6 +111,10 @@ interface State {
   controls: Set<string>;
   /** End-user editing disabled (embed readonly). */
   readonly: boolean;
+  /** Admin session active (only admins may edit layers and drawings). */
+  admin: boolean;
+  /** The server accepts admin logins (ADMIN_PASSWORD is set). */
+  loginEnabled: boolean;
   interaction: Interaction;
   /** Temporary markers set by an embedding host page. */
   markers: MarkerInput[];
@@ -109,12 +127,15 @@ interface State {
   setCapabilities: (c: DataCapabilities) => void;
   setOnline: (v: boolean) => void;
   loadAll: (layers: MapLayer[], features: MapFeature[]) => void;
+  /** Marks layers loaded/unloaded; features of unloaded layers are dropped. */
+  setLoadedLayers: (ids: string[]) => void;
+  addFeatures: (features: MapFeature[]) => void;
+  setAuth: (admin: boolean, loginEnabled?: boolean) => void;
   upsertFeature: (f: MapFeature) => void;
   removeFeature: (id: string) => void;
   upsertLayer: (l: MapLayer) => void;
   removeLayer: (id: string) => void;
   applyServerMessage: (m: ServerMessage) => void;
-  toggleLayerHidden: (id: string) => void;
   setActiveLayer: (id: string) => void;
   select: (id: string | null) => void;
   setEditing: (id: string | null) => void;
@@ -142,7 +163,8 @@ export const useStore = create<State>((set, get) => ({
   online: false,
   layers: [],
   features: {},
-  hiddenLayerIds: [],
+  loadedLayerIds: [],
+  pendingLayerRequest: initialLayerRequest(),
   activeLayerId: null,
   selectedId: null,
   editingId: null,
@@ -162,6 +184,8 @@ export const useStore = create<State>((set, get) => ({
   measure: { coords: null, center: null, radii: loadPref('radii', '10, 25, 50') },
   controls: resolveControls(embed.params.controls),
   readonly: !!embed.params.readonly,
+  admin: false,
+  loginEnabled: false,
   interaction: {
     interactive: embed.params.interactive ?? true,
     minZoom: embed.params.minZoom ?? null,
@@ -179,22 +203,48 @@ export const useStore = create<State>((set, get) => ({
   loadAll: (layers, features) =>
     set((s) => {
       const sorted = [...layers].sort((a, b) => a.sortOrder - b.sortOrder);
-      const active = sorted.some((l) => l.id === s.activeLayerId) ? s.activeLayerId : (sorted[0]?.id ?? null);
-      const initialHidden = embed.params.layers
-        ? sorted.filter((l) => !embed.params.layers!.includes(l.id)).map((l) => l.id)
-        : sorted.filter((l) => !l.visible).map((l) => l.id);
+      const loaded = s.loadedLayerIds.filter((id) => sorted.some((l) => l.id === id));
       return {
         layers: sorted,
-        features: Object.fromEntries(features.map((f) => [f.id, f])),
-        hiddenLayerIds: s.layers.length ? s.hiddenLayerIds : initialHidden,
-        activeLayerId: active,
+        features: Object.fromEntries(features.filter((f) => loaded.includes(f.layerId)).map((f) => [f.id, f])),
+        loadedLayerIds: loaded,
+        activeLayerId: loaded.includes(s.activeLayerId ?? '') ? s.activeLayerId : (loaded[0] ?? null),
         loadGeneration: s.loadGeneration + 1,
       };
     }),
+  setLoadedLayers: (ids) =>
+    set((s) => {
+      const loaded = [...new Set(ids)];
+      if (!embed.enabled) savePref('loadedLayers', loaded.join(','));
+      const features = Object.fromEntries(Object.entries(s.features).filter(([, f]) => loaded.includes(f.layerId)));
+      return {
+        loadedLayerIds: loaded,
+        pendingLayerRequest: null,
+        features,
+        activeLayerId: s.activeLayerId && loaded.includes(s.activeLayerId) ? s.activeLayerId : (loaded[0] ?? null),
+        selectedId: s.selectedId && features[s.selectedId] ? s.selectedId : null,
+        editingId: s.editingId && features[s.editingId] ? s.editingId : null,
+      };
+    }),
+  addFeatures: (list) =>
+    set((s) => ({ features: { ...s.features, ...Object.fromEntries(list.filter((f) => s.loadedLayerIds.includes(f.layerId)).map((f) => [f.id, f])) } })),
+  setAuth: (admin, loginEnabled) =>
+    set((s) => ({
+      admin,
+      loginEnabled: loginEnabled ?? s.loginEnabled,
+      // Losing admin rights ends any drawing or edit session.
+      ...(!admin ? { editingId: null, tool: s.tool.type === 'draw' ? { type: 'none' as const } : s.tool } : {}),
+    })),
   upsertFeature: (f) =>
     set((s) => {
       const existing = s.features[f.id];
       if (existing && existing.version > f.version) return s;
+      if (!s.loadedLayerIds.includes(f.layerId)) {
+        // Moved into a layer that is not loaded: it disappears like the rest of that layer.
+        if (!existing) return s;
+        const { [f.id]: _moved, ...rest } = s.features;
+        return { features: rest, selectedId: s.selectedId === f.id ? null : s.selectedId };
+      }
       return { features: { ...s.features, [f.id]: f } };
     }),
   removeFeature: (id) =>
@@ -209,7 +259,7 @@ export const useStore = create<State>((set, get) => ({
   upsertLayer: (l) =>
     set((s) => {
       const layers = [...s.layers.filter((x) => x.id !== l.id), l].sort((a, b) => a.sortOrder - b.sortOrder);
-      return { layers, activeLayerId: s.activeLayerId ?? l.id };
+      return { layers };
     }),
   removeLayer: (id) =>
     set((s) => {
@@ -218,7 +268,8 @@ export const useStore = create<State>((set, get) => ({
       return {
         layers,
         features,
-        activeLayerId: s.activeLayerId === id ? (layers[0]?.id ?? null) : s.activeLayerId,
+        loadedLayerIds: s.loadedLayerIds.filter((x) => x !== id),
+        activeLayerId: s.activeLayerId === id ? (s.loadedLayerIds.find((x) => x !== id) ?? null) : s.activeLayerId,
         selectedId: s.selectedId && features[s.selectedId] ? s.selectedId : null,
       };
     }),
@@ -237,10 +288,6 @@ export const useStore = create<State>((set, get) => ({
         return s.removeLayer(m.id);
     }
   },
-  toggleLayerHidden: (id) =>
-    set((s) => ({
-      hiddenLayerIds: s.hiddenLayerIds.includes(id) ? s.hiddenLayerIds.filter((x) => x !== id) : [...s.hiddenLayerIds, id],
-    })),
   setActiveLayer: (activeLayerId) => set({ activeLayerId }),
   select: (selectedId) => set({ selectedId }),
   setEditing: (editingId) => set({ editingId }),
@@ -291,3 +338,6 @@ darkQuery?.addEventListener('change', () => {
   const s = useStore.getState();
   if (s.theme === 'auto') useStore.setState({ resolvedTheme: systemTheme() });
 });
+
+/** Editing is allowed for admins, unless the embedding page made the map read-only. */
+export const canEdit = (s: Pick<State, 'admin' | 'readonly'>): boolean => s.admin && !s.readonly;

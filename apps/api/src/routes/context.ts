@@ -2,6 +2,7 @@ import { access } from 'node:fs/promises';
 import path from 'node:path';
 import type { DataCapabilities } from '@ai-map/shared';
 import type { Archive, ArchiveName } from '../archives.js';
+import type { Auth } from '../auth.js';
 import { config } from '../config.js';
 import type { DemReader } from '../dem.js';
 
@@ -9,6 +10,7 @@ export interface AppContext {
   dataDir: string;
   archives: Record<ArchiveName, Archive>;
   dem: DemReader;
+  auth: Auth;
 }
 
 async function exists(p: string): Promise<boolean> {

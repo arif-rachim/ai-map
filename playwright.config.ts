@@ -3,6 +3,7 @@ import { defineConfig } from '@playwright/test';
 /**
  * End-to-end tests against a running stack (dev: `npm run dev:api` + `npm run dev:web`, or an installed server).
  *   E2E_BASE_URL   default http://localhost:5173
+ *   E2E_ADMIN_TOKEN the server's ADMIN_API_TOKEN (tests create data and act as admin)
  *   CHROME_PATH    Chrome/Chromium binary (no browser download needed; works offline). Default /usr/bin/google-chrome
  * Tests that need map data (tiles, terrain, geocoder) skip with a reason when it is not installed.
  */

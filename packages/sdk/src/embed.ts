@@ -125,6 +125,8 @@ export class AiMapEmbed {
   selectFeature = (id: string | null, zoomTo = false) => this.call('selectFeature', { id, zoomTo });
   setLayerVisible = (layerId: string, visible: boolean) => this.call('setLayerVisible', { layerId, visible });
   setActiveLayer = (layerId: string) => this.call('setActiveLayer', { layerId });
+  /** Admin token for writes (addFeature, updateFeature, deleteFeature); `null` signs out. */
+  setAuthToken = (token: string | null) => this.call('setAuthToken', { token });
   setTool = (tool: ToolName) => this.call('setTool', { tool });
   setOptions = (options: EmbedCommands['setOptions']['params']) => this.call('setOptions', options);
   setMarkers = (markers: MarkerInput[], replace = false) => this.call('setMarkers', { markers, replace });

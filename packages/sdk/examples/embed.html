@@ -22,6 +22,8 @@
     <button id="markers">Show 3 host markers (not saved)</button>
     <button id="move">Move vehicle marker</button>
     <button id="clear">Remove host markers</button>
+    <label>Admin token <input id="token" type="password" placeholder="ADMIN_API_TOKEN" /></label>
+    <button id="auth">Use token (needed to save)</button>
     <button id="add">Save a pin at the map center (shared)</button>
     <button id="measure">Start distance measurement</button>
     <button id="dark">Dark theme</button>
@@ -59,7 +61,11 @@
     let step = 0;
     run('move', () => map.setMarkers([{ id: 'vehicle', lon: 46.64 + (++step) * 0.01, lat: 24.69 + step * 0.004, label: `Vehicle 7 (${step})`, color: '#16a34a' }]));
     run('clear', () => map.removeMarkers());
+    run('auth', async () => log('auth', await map.setAuthToken(document.getElementById('token').value || null)));
     run('add', async () => {
+      // Saved into the active layer, which must be loaded: take the first layer when none is.
+      const [layer] = await map.listLayers();
+      if (layer) await map.setActiveLayer(layer.id);
       const view = await map.getView();
       const [lon, lat] = view.center;
       const f = await map.addFeature({

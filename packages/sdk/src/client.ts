@@ -43,12 +43,30 @@ export interface Subscription {
 /** REST + WebSocket client for the AI Map server (`/api/v1`). Works in browsers and Node 18+. */
 export class AiMapClient {
   readonly baseUrl: string;
+  /** Admin token (ADMIN_API_TOKEN or a session from login()); required for writing layers and drawings. */
+  token: string | null;
 
-  /** @param baseUrl server origin, e.g. "http://maps.local". Defaults to the current page origin in browsers. */
-  constructor(baseUrl?: string) {
+  /**
+   * @param baseUrl server origin, e.g. "http://maps.local". Defaults to the current page origin in browsers.
+   * @param opts.token admin token for writes; reading needs none.
+   */
+  constructor(baseUrl?: string, opts: { token?: string | null } = {}) {
     const origin = baseUrl ?? (typeof location !== 'undefined' ? location.origin : '');
     if (!origin) throw new Error('AiMapClient: baseUrl is required outside a browser');
     this.baseUrl = origin.replace(/\/$/, '');
+    this.token = opts.token ?? null;
+  }
+
+  /** Exchanges the admin password for a session token and uses it for later requests. */
+  async login(password: string): Promise<{ token: string; expiresAt: string }> {
+    const session = await this.request<{ token: string; expiresAt: string }>('POST', '/auth/login', { body: { password } });
+    this.token = session.token;
+    return session;
+  }
+
+  /** Whether the current token grants admin rights, and whether the server accepts logins at all. */
+  session(): Promise<{ admin: boolean; loginEnabled: boolean }> {
+    return this.request('GET', '/auth/session');
   }
 
   private url(path: string, query?: Record<string, string | number | boolean | undefined>): string {
@@ -61,7 +79,10 @@ export class AiMapClient {
   private async request<T>(method: string, path: string, opts: { query?: Record<string, string | number | boolean | undefined>; body?: unknown; contentType?: string } = {}): Promise<T> {
     const res = await fetch(this.url(path, opts.query), {
       method,
-      headers: opts.body === undefined ? undefined : { 'content-type': opts.contentType ?? 'application/json' },
+      headers: {
+        ...(opts.body === undefined ? {} : { 'content-type': opts.contentType ?? 'application/json' }),
+        ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
+      },
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
     });
     if (res.status === 204) return undefined as T;

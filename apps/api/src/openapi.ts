@@ -25,7 +25,7 @@ export const openApiDocument = {
       '- **Real-time**: WebSocket `GET /api/v1/events` pushes `feature.created|updated|deleted` and `layer.created|updated|deleted` messages as JSON.',
       '- **OGC API - Features** (read-only) under `/api/v1/ogc` for GIS software.',
       '',
-      'No authentication is required. Coordinates are WGS84 longitude/latitude.',
+      'Reading needs no authentication. Creating, changing and deleting layers and drawings (and importing) is for admins only: send `Authorization: Bearer <token>` with the server\'s ADMIN_API_TOKEN or a session token from `POST /auth/login`. Coordinates are WGS84 longitude/latitude.',
     ].join('\n'),
   },
   servers: [{ url: '/api/v1' }],
@@ -38,8 +38,10 @@ export const openApiDocument = {
     { name: 'Exchange' },
     { name: 'OGC API Features' },
     { name: 'System' },
+    { name: 'Admin' },
   ],
   components: {
+    securitySchemes: { admin: { type: 'http', scheme: 'bearer', description: 'ADMIN_API_TOKEN, or a session token from POST /auth/login' } },
     schemas: {
       Geometry: schema(Geometry),
       Style: schema(Style),
@@ -133,6 +135,26 @@ export const openApiDocument = {
     },
   },
   paths: {
+    '/auth/session': {
+      get: {
+        tags: ['Admin'],
+        summary: 'Whether the sent token grants admin rights',
+        responses: { '200': json({ type: 'object', properties: { admin: { type: 'boolean' }, loginEnabled: { type: 'boolean' } } }) },
+      },
+    },
+    '/auth/login': {
+      post: {
+        tags: ['Admin'],
+        summary: 'Exchange the admin password for a session token (Bearer)',
+        requestBody: json({ type: 'object', required: ['password'], properties: { password: { type: 'string' } } }),
+        responses: {
+          '200': json({ type: 'object', properties: { token: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } } }),
+          '401': { description: 'Wrong password' },
+          '403': { description: 'Login disabled (no ADMIN_PASSWORD)' },
+          '429': { description: 'Too many failed attempts' },
+        },
+      },
+    },
     '/health': { get: { tags: ['System'], summary: 'Liveness', responses: { '200': { description: 'OK' } } } },
     '/capabilities': { get: { tags: ['System'], summary: 'Installed datasets and services', responses: { '200': json(ref('Capabilities')) } } },
     '/styles/{theme}.json': {
@@ -304,3 +326,13 @@ export const openApiDocument = {
     },
   },
 };
+
+// Writes on layers, features and imports need an admin token.
+for (const item of Object.values(openApiDocument.paths) as Record<string, { tags?: string[]; security?: unknown; responses?: Record<string, unknown> }>[]) {
+  for (const method of ['post', 'patch', 'delete'] as const) {
+    const op = item[method];
+    if (!op?.tags?.some((t) => t === 'Layers' || t === 'Features' || t === 'Exchange')) continue;
+    op.security = [{ admin: [] }];
+    op.responses = { ...op.responses, '401': { description: 'Admin token missing or invalid' } };
+  }
+}

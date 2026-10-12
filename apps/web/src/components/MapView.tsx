@@ -354,7 +354,7 @@ export function MapView() {
   // Push store changes to map sources.
   useEffect(() => {
     const unsub = useStore.subscribe((s, prev) => {
-      if (s.features !== prev.features || s.hiddenLayerIds !== prev.hiddenLayerIds || s.selectedId !== prev.selectedId || s.editingId !== prev.editingId) {
+      if (s.features !== prev.features || s.loadedLayerIds !== prev.loadedLayerIds || s.selectedId !== prev.selectedId || s.editingId !== prev.editingId) {
         syncFeatures();
       }
       if (s.measure !== prev.measure || s.unit !== prev.unit || s.tool !== prev.tool) syncMeasure();
@@ -418,7 +418,7 @@ export function MapView() {
     const src = mapRef.current?.getSource('app:features') as GeoJSONSource | undefined;
     if (!src) return;
     const s = useStore.getState();
-    const visible = Object.values(s.features).filter((f) => !s.hiddenLayerIds.includes(f.layerId) && f.id !== s.editingId);
+    const visible = Object.values(s.features).filter((f) => s.loadedLayerIds.includes(f.layerId) && f.id !== s.editingId);
     src.setData(toRenderCollection(visible, s.selectedId));
   }
 

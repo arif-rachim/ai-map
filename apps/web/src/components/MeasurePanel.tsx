@@ -7,7 +7,7 @@ import { ensureLayerId } from '../lib/layers';
 import { roundGeometry } from '../lib/featureGeo';
 import { formatArea, formatDistance, lineSegments, ring, toMeters } from '@ai-map/shared';
 import { parseRadii } from '../lib/measureOverlay';
-import { useStore } from '../store';
+import { canEdit, useStore } from '../store';
 import { ElevationProfile } from './ElevationProfile';
 import { MEASURE_ICONS } from './icons';
 import { Row, Section } from './ui';
@@ -17,7 +17,7 @@ export function MeasurePanel() {
   const tool = useStore((s) => s.tool);
   const m = useStore((s) => s.measure);
   const unit = useStore((s) => s.unit);
-  const readonly = useStore((s) => s.readonly);
+  const readonly = !useStore(canEdit);
   const s = useStore.getState();
   if (tool.type !== 'measure') return null;
 

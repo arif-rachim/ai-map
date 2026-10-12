@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiMapClient, AiMapError } from './client';
 
-type Call = { url: string; method: string; body: unknown; contentType: string | null };
+type Call = { url: string; method: string; body: unknown; contentType: string | null; authorization: string | null };
 
 function mockFetch(respond: (c: Call) => Response = () => new Response('[]', { status: 200 })) {
   const calls: Call[] = [];
@@ -10,7 +10,7 @@ function mockFetch(respond: (c: Call) => Response = () => new Response('[]', { s
     'fetch',
     vi.fn(async (url: string, init: RequestInit = {}) => {
       const headers = (init.headers ?? {}) as Record<string, string>;
-      const call = { url, method: init.method ?? 'GET', body: init.body ? JSON.parse(String(init.body)) : undefined, contentType: headers['content-type'] ?? null };
+      const call = { url, method: init.method ?? 'GET', body: init.body ? JSON.parse(String(init.body)) : undefined, contentType: headers['content-type'] ?? null, authorization: headers.authorization ?? null };
       calls.push(call);
       return respond(call);
     }),
@@ -72,6 +72,19 @@ describe('AiMapClient requests', () => {
     expect(calls[13]!.body).toEqual({ name: 'x', version: 7 });
     expect(calls[16]!.contentType).toBe('application/geo+json');
     expect(calls[1]!.contentType).toBeNull();
+  });
+
+  it('sends the admin token, and takes it from login()', async () => {
+    const calls = mockFetch((c) => new Response(c.url.endsWith('/auth/login') ? '{"token":"v1.9.abc","expiresAt":"x"}' : '{}', { status: 200 }));
+    const anon = new AiMapClient('http://maps.local');
+    await anon.layers();
+    expect(calls[0]!.authorization).toBeNull();
+    await new AiMapClient('http://maps.local', { token: 'api-token' }).createLayer({ name: 'A' });
+    expect(calls[1]!.authorization).toBe('Bearer api-token');
+    await expect(anon.login('secret')).resolves.toMatchObject({ token: 'v1.9.abc' });
+    expect(calls[2]).toMatchObject({ method: 'POST', body: { password: 'secret' } });
+    await anon.session();
+    expect(calls[3]!.authorization).toBe('Bearer v1.9.abc');
   });
 
   it('builds resource URLs without requests', () => {

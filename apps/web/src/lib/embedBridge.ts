@@ -16,7 +16,8 @@ import {
 } from '@ai-map/shared';
 import { api, ApiError } from './api';
 import { featureBounds } from './featureGeo';
-import { ensureLayerId } from './layers';
+import { applyToken } from './auth';
+import { ensureLayerId, setLayerLoaded } from './layers';
 import { DRAW_TOOLS, MEASURE_TOOLS } from './layout';
 import { mapRef, whenMapReady } from '../mapRef';
 import { useStore, type DrawTool, type MeasureTool, type Tool } from '../store';
@@ -64,7 +65,10 @@ export const embedHandlers: { [K in EmbedCommandName]: Handler<K> } = {
     if (!res.ok) throw new Error(`Search failed (${res.status})`);
     return (await res.json()) as SearchResultItem[];
   },
-  listLayers: () => useStore.getState().layers,
+  listLayers: () => {
+    const s = useStore.getState();
+    return s.layers.map((l) => ({ ...l, loaded: s.loadedLayerIds.includes(l.id) }));
+  },
   listFeatures: ({ layerId } = {}) => Object.values(useStore.getState().features).filter((f) => !layerId || f.layerId === layerId),
   addFeature: async (p) => {
     const s = useStore.getState();
@@ -91,15 +95,16 @@ export const embedHandlers: { [K in EmbedCommandName]: Handler<K> } = {
     s.select(id);
     if (id && zoomTo) requireMap().fitBounds(featureBounds(s.features[id]!), { padding: 80, maxZoom: 15, duration: 800 });
   },
-  setLayerVisible: ({ layerId, visible }) => {
-    const s = useStore.getState();
-    if (!s.layers.some((l) => l.id === layerId)) throw new Error('Layer not found');
-    if (s.hiddenLayerIds.includes(layerId) === visible) s.toggleLayerHidden(layerId);
+  /** Loads (shows) or unloads a layer. */
+  setLayerVisible: async ({ layerId, visible }) => {
+    if (!useStore.getState().layers.some((l) => l.id === layerId)) throw new Error('Layer not found');
+    await setLayerLoaded(layerId, visible);
   },
-  setActiveLayer: ({ layerId }) => {
-    const s = useStore.getState();
-    if (!s.layers.some((l) => l.id === layerId)) throw new Error('Layer not found');
-    s.setActiveLayer(layerId);
+  setAuthToken: async ({ token }) => ({ admin: await applyToken(token) }),
+  setActiveLayer: async ({ layerId }) => {
+    if (!useStore.getState().layers.some((l) => l.id === layerId)) throw new Error('Layer not found');
+    await setLayerLoaded(layerId, true);
+    useStore.getState().setActiveLayer(layerId);
   },
   setTool: ({ tool }) => useStore.getState().setTool(parseTool(tool)),
   setOptions: (o) => {

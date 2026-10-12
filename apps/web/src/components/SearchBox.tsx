@@ -6,7 +6,7 @@ import { DEFAULT_STYLE, formatCoordinates, parseCoordinates, type LonLat, type S
 import { api } from '../lib/api';
 import { ensureLayerId } from '../lib/layers';
 import { mapRef } from '../mapRef';
-import { useStore } from '../store';
+import { canEdit, useStore } from '../store';
 
 interface Item {
   type: 'coord' | 'airport' | 'place';
@@ -138,7 +138,7 @@ export function SearchBox() {
     const actions = document.createElement('div');
     actions.className = 'popup-actions';
     actions.append(remove);
-    if (!useStore.getState().readonly) actions.append(btn);
+    if (canEdit(useStore.getState())) actions.append(btn);
     el.append(title, detail, actions);
     marker = new maplibregl.Marker({ color: getComputedStyle(document.querySelector('.app') ?? document.body).getPropertyValue('--accent').trim() || '#007aff' })
       .setLngLat([item.pos.lon, item.pos.lat])

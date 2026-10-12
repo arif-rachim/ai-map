@@ -4,11 +4,12 @@ import { featuresToGeoJSON, featuresToKML, geoJSONToFeatureInputs } from '@ai-ma
 import { Bbox, HttpError, IdParams, parse } from '../http.js';
 import { broadcast } from '../hub.js';
 import * as repo from '../repo.js';
+import type { AppContext } from './context.js';
 
 const safeName = (s: string) => s.replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 80) || 'layer';
 
-/** GeoJSON / KML export and GeoJSON import. */
-export async function exchangeRoutes(app: FastifyInstance) {
+/** GeoJSON / KML export and GeoJSON import (admins only). */
+export async function exchangeRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/features.geojson', async (req, reply) => {
     const q = parse(z.object({ layerId: z.uuid().optional(), bbox: Bbox.optional() }), req.query);
     const { features } = await repo.queryFeatures(q);
@@ -25,7 +26,7 @@ export async function exchangeRoutes(app: FastifyInstance) {
     return reply.type('application/geo+json').send(featuresToGeoJSON(features, layer));
   });
 
-  app.post('/layers/:id/import', { bodyLimit: 50 * 1024 * 1024 }, async (req, reply) => {
+  app.post('/layers/:id/import', { bodyLimit: 50 * 1024 * 1024, preHandler: ctx.auth.requireAdmin }, async (req, reply) => {
     const { id } = parse(IdParams, req.params);
     const { mode } = parse(z.object({ mode: z.enum(['append', 'replace']).default('append') }), req.query);
     if (!(await repo.getLayer(id))) throw new HttpError(404, 'Layer not found');

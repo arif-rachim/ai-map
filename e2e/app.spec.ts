@@ -1,6 +1,33 @@
-import { expect, openMap, search, test, waitLive, waitMapReady } from './fixtures';
+import { ADMIN_TOKEN, expect, openMap, search, test, waitLive, waitMapReady } from './fixtures';
 
 test.describe('full app', () => {
+  test('viewers see layers but no editing; admins log in with the password', async ({ page, data }) => {
+    const layer = await data.layer();
+    await data.point(layer.id, 46.7, 24.7, 'Visible to viewers');
+    await openMap(page, '/map', { admin: false });
+    await waitLive(page);
+    await expect(page.locator('[data-control="draw.point"]')).toHaveCount(0);
+    await expect(page.locator('.add-layer')).toHaveCount(0);
+    // Nothing is loaded until the user ticks a layer.
+    const row = page.locator('.layer-item', { hasText: layer.name });
+    await expect(row.locator('.layer-load')).not.toBeChecked();
+    await expect(page.locator('.feature-item', { hasText: 'Visible to viewers' })).toHaveCount(0);
+    await row.locator('.layer-load').check();
+    await expect(page.locator('.feature-item', { hasText: 'Visible to viewers' })).toBeVisible();
+    await expect(row.locator('.layer-actions')).toHaveCount(0);
+    // The choice is remembered in this browser (openMap's init script clears storage on reload, so read it).
+    expect(await page.evaluate(() => localStorage.getItem('aimap.loadedLayers'))).toContain(layer.id);
+    await expect(page.locator('.admin-button')).toBeVisible();
+  });
+
+  test('loads layers by name from the URL', async ({ page, data }) => {
+    const layer = await data.layer();
+    await data.point(layer.id, 46.7, 24.7, 'Loaded by name');
+    await openMap(page, `/map?layers=${encodeURIComponent(layer.name)}`, { admin: false });
+    await waitLive(page);
+    await expect(page.locator('.feature-item', { hasText: 'Loaded by name' })).toBeVisible();
+  });
+
   test('renders the floating UI without attribution', async ({ page }) => {
     await openMap(page);
     await expect(page.locator('.search-field')).toBeVisible();
@@ -115,14 +142,15 @@ test.describe('full app', () => {
 
   test('a tool chosen before the map finished loading works', async ({ page, data }) => {
     const layer = await data.layer();
-    await page.addInitScript(() => {
+    await page.addInitScript((token) => {
       try {
         localStorage.clear();
+        localStorage.setItem('aimap.adminToken', token);
       } catch {
         // storage unavailable
       }
-    });
-    await page.goto('/map');
+    }, ADMIN_TOKEN);
+    await page.goto(`/map?layers=${layer.id}`);
     // Selected as early as possible, then never touched again: the map must pick it up once loaded.
     await page.locator('[data-control="draw.point"]').click();
     await waitMapReady(page);
@@ -159,10 +187,10 @@ test.describe('full app', () => {
 
   test('shares drawings live between users', async ({ browser, page, data, baseURL }) => {
     const layer = await data.layer();
-    await openMap(page);
+    await openMap(page, '/map', { layers: [layer.id] });
     await waitLive(page);
     const other = await browser.newPage({ baseURL });
-    await openMap(other);
+    await openMap(other, '/map', { admin: false, layers: [layer.id] });
     await waitLive(other);
     await data.point(layer.id, 46.7, 24.7, 'Checkpoint 4');
     await expect(page.locator('.feature-item', { hasText: 'Checkpoint 4' })).toBeVisible();

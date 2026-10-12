@@ -41,6 +41,7 @@ ok() { echo "    ${G}✓${N} $*"; }
 warn() { echo "    ${Y}!${N} $*"; WARNINGS+=("$*"); }
 die() { echo "${R}ERROR:${N} $*" >&2; exit 1; }
 WARNINGS=()
+NEW_ADMIN=0
 human() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "$1 bytes"; }
 json_field() { sed -n "s/^  \"$1\": \"\{0,1\}\([^\",]*\)\"\{0,1\},\{0,1\}$/\1/p" "$BUNDLE/manifest.json" | head -1; }
 
@@ -158,6 +159,9 @@ install -m 0755 "$BUNDLE/aimapctl" "$APP_DIR/aimapctl"
 install -m 0644 "$BUNDLE/manifest.json" "$APP_DIR/installed-$TYPE-$BUNDLE_VERSION.json"
 
 random_secret() { head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+# Readable admin password: 16 characters without look-alikes (0/O, 1/l/I).
+# Reads a fixed amount first: `tr </dev/urandom | head` would die of SIGPIPE under pipefail.
+random_password() { head -c 1000 /dev/urandom | LC_ALL=C tr -dc 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789' | cut -c1-16; }
 set_env() {
   local key="$1" value="$2" file="$APP_DIR/.env"
   if grep -q "^$key=" "$file"; then sed -i "s|^$key=.*|$key=$value|" "$file"; else echo "$key=$value" >> "$file"; fi
@@ -180,6 +184,7 @@ AIMAP_GID=1000
 PUBLIC_URL=${PUBLIC_URL:-$DEFAULT_PUBLIC_URL}
 AIMAP_VERSION=latest
 ENV
+  NEW_ADMIN=1
   chmod 600 "$APP_DIR/.env"
   ok "created .env with a generated database password"
 else
@@ -193,6 +198,11 @@ else
   [[ -n "$PHOTON_HEAP" ]] && set_env PHOTON_HEAP "$PHOTON_HEAP"
   ok "kept existing .env (passwords unchanged)"
 fi
+# Admin access (added on first install and on updates from versions without it); existing values are kept.
+env_value() { sed -n "s/^$1=//p" "$APP_DIR/.env" | head -1; }
+if [[ -z "$(env_value ADMIN_PASSWORD)" ]]; then set_env ADMIN_PASSWORD "$(random_password)"; NEW_ADMIN=1; fi
+[[ -n "$(env_value ADMIN_API_TOKEN)" ]] || set_env ADMIN_API_TOKEN "$(random_secret)"
+[[ -n "$(env_value AUTH_SECRET)" ]] || set_env AUTH_SECRET "$(random_secret)"
 if [[ -f "$BUNDLE/images.tar" ]]; then set_env AIMAP_VERSION "$BUNDLE_VERSION"; fi
 set -a; . "$APP_DIR/.env"; set +a
 
@@ -281,6 +291,11 @@ echo "    API docs:     http://$first_ip$suffix/api/v1/docs/"
 echo "    Integration:  http://$first_ip$suffix/sdk/examples/"
 echo
 echo "    Manage with:  aimapctl status | logs | access | restart | backup | health   (in $APP_DIR)"
+if [[ $NEW_ADMIN -eq 1 ]]; then
+  echo
+  echo "    ${B}Admin password (editing layers and drawings): $(env_value ADMIN_PASSWORD)${N}"
+  echo "    API token for other applications: aimapctl admin   (both are stored in $APP_DIR/.env)"
+fi
 if (( ${#WARNINGS[@]} )); then
   echo
   echo "${Y}Warnings:${N}"

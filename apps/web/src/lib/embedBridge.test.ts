@@ -17,11 +17,14 @@ vi.mock('./api', () => {
       createLayer: vi.fn(),
       updateFeature: vi.fn(),
       deleteFeature: vi.fn(),
+      features: vi.fn(async () => []),
+      session: vi.fn(async () => ({ admin: true, loginEnabled: true })),
     },
+    setApiToken: vi.fn(),
   };
 });
 
-import { api, ApiError } from './api';
+import { api, ApiError, setApiToken } from './api';
 import { embedHandlers as h, parseTool, startEmbedBridge } from './embedBridge';
 import { markMapReady, mapRef } from '../mapRef';
 import { useStore } from '../store';
@@ -75,7 +78,7 @@ describe('embed command handlers', () => {
       layers: [layer('L1'), layer('L2')],
       features: { f1: feature('f1', 'L1'), f2: feature('f2', 'L2', 4) },
       activeLayerId: 'L1',
-      hiddenLayerIds: [],
+      loadedLayerIds: ['L1', 'L2'],
       selectedId: null,
       markers: [],
       controls: resolveControls(undefined),
@@ -103,7 +106,7 @@ describe('embed command handlers', () => {
   });
 
   it('lists layers and features', () => {
-    expect((h.listLayers() as MapLayer[]).map((l) => l.id)).toEqual(['L1', 'L2']);
+    expect((h.listLayers() as (MapLayer & { loaded: boolean })[]).map((l) => `${l.id}:${l.loaded}`)).toEqual(['L1:true', 'L2:true']);
     expect((h.listFeatures({ layerId: 'L2' }) as MapFeature[]).map((f) => f.id)).toEqual(['f2']);
     expect(h.listFeatures({}) as MapFeature[]).toHaveLength(2);
   });
@@ -129,13 +132,10 @@ describe('embed command handlers', () => {
     await h.addFeature({ kind: 'point', geometry: { type: 'Point', coordinates: [1, 1] } });
     expect(vi.mocked(api.createFeature).mock.calls[1]![0]).toMatchObject({ layerId: 'L1' });
 
-    // ... and creates a "Default" layer when none exist.
-    useStore.setState({ activeLayerId: null, layers: [] });
-    vi.mocked(api.createLayer).mockResolvedValue(layer('LD'));
-    await h.addFeature({ kind: 'point', geometry: { type: 'Point', coordinates: [1, 1] } });
-    expect(vi.mocked(api.createLayer)).toHaveBeenCalledWith({ name: 'Default' });
-    expect(vi.mocked(api.createFeature).mock.calls[2]![0]).toMatchObject({ layerId: 'LD' });
-    expect(useStore.getState().activeLayerId).toBe('LD');
+    // ... and refuses when no layer is loaded (drawings always go into a chosen layer).
+    useStore.setState({ activeLayerId: null, loadedLayerIds: [] });
+    await expect(h.addFeature({ kind: 'point', geometry: { type: 'Point', coordinates: [1, 1] } })).rejects.toThrow('Load a layer first');
+    expect(vi.mocked(api.createLayer)).not.toHaveBeenCalled();
   });
 
   it('updates with the latest known version unless one is given, and deletes', async () => {
@@ -160,17 +160,29 @@ describe('embed command handlers', () => {
     expect(() => h.selectFeature({ id: 'nope' })).toThrow('Feature not found');
   });
 
-  it('changes layer visibility and the active layer, rejecting unknown layers', () => {
-    h.setLayerVisible({ layerId: 'L2', visible: false });
-    expect(useStore.getState().hiddenLayerIds).toEqual(['L2']);
-    h.setLayerVisible({ layerId: 'L2', visible: false });
-    expect(useStore.getState().hiddenLayerIds).toEqual(['L2']);
-    h.setLayerVisible({ layerId: 'L2', visible: true });
-    expect(useStore.getState().hiddenLayerIds).toEqual([]);
-    expect(() => h.setLayerVisible({ layerId: 'nope', visible: false })).toThrow('Layer not found');
-    h.setActiveLayer({ layerId: 'L2' });
+  it('loads and unloads layers and sets the active layer, rejecting unknown layers', async () => {
+    await h.setLayerVisible({ layerId: 'L2', visible: false });
+    expect(useStore.getState().loadedLayerIds).toEqual(['L1']);
+    expect(useStore.getState().features.f2).toBeUndefined();
+    await h.setLayerVisible({ layerId: 'L2', visible: false });
+    expect(useStore.getState().loadedLayerIds).toEqual(['L1']);
+    vi.mocked(api.features).mockResolvedValueOnce([feature('f2', 'L2', 4)]);
+    await h.setLayerVisible({ layerId: 'L2', visible: true });
+    expect(useStore.getState().loadedLayerIds).toEqual(['L1', 'L2']);
+    expect(vi.mocked(api.features)).toHaveBeenCalledWith('L2');
+    expect(useStore.getState().features.f2).toBeDefined();
+    await expect(h.setLayerVisible({ layerId: 'nope', visible: false })).rejects.toThrow('Layer not found');
+    await h.setLayerVisible({ layerId: 'L2', visible: false });
+    await h.setActiveLayer({ layerId: 'L2' });
     expect(useStore.getState().activeLayerId).toBe('L2');
-    expect(() => h.setActiveLayer({ layerId: 'nope' })).toThrow('Layer not found');
+    expect(useStore.getState().loadedLayerIds).toContain('L2');
+    await expect(h.setActiveLayer({ layerId: 'nope' })).rejects.toThrow('Layer not found');
+  });
+
+  it('takes an admin token from the host page', async () => {
+    await expect(h.setAuthToken({ token: 't0ken' })).resolves.toEqual({ admin: true });
+    expect(vi.mocked(setApiToken)).toHaveBeenCalledWith('t0ken');
+    expect(useStore.getState().admin).toBe(true);
   });
 
   it('parses tools strictly', () => {

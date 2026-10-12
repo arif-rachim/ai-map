@@ -112,7 +112,7 @@
           <tr><td><code>readonly</code></td><td>Users cannot change drawings</td><td><code>readonly=1</code></td></tr>
           <tr><td><code>interactive</code></td><td><code>0</code> = users cannot pan or zoom the map</td><td><code>interactive=0</code></td></tr>
           <tr><td><code>minZoom</code>, <code>maxZoom</code>, <code>maxBounds</code></td><td>Zoom limits and area <code>west,south,east,north</code></td><td><code>maxBounds=34,12,60,32</code></td></tr>
-          <tr><td><code>layers</code> / <code>select</code></td><td>Only specific layers visible / open a specific object</td><td><code>layers=&lt;id&gt;</code></td></tr>
+          <tr><td><code>layers</code> / <code>select</code></td><td>Layers to load (by name or id) / open a specific object</td><td><code>layers=abc</code></td></tr>
         </table>
       </div>
 
@@ -234,7 +234,8 @@ import { AiMapEmbed, AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs
 
     <section id="playground">
       <h2>Playground</h2>
-      <p class="lead">Click a button to run a command on the map below. The code that runs is shown alongside.</p>
+      <p class="lead">Click a button to run a command on the map below. The code that runs is shown alongside. Saving and deleting pins needs the admin API token (<code>aimapctl admin</code> on the server) and a loaded layer.</p>
+      <label style="display:block;margin:0 0 10px">Admin token <input id="pg-token" type="password" placeholder="ADMIN_API_TOKEN (only for saving)" style="width:min(360px,100%)" /></label>
       <div class="card playground">
         <div>
           <div class="buttons" id="pg-buttons"></div>
@@ -275,7 +276,7 @@ import { AiMapEmbed, AiMapClient, addDrawings } from '{{BASE}}/sdk/aimap-sdk.mjs
       <h2>B3. Backends and other languages</h2>
       <pre><code>// Node.js 18+ — copy {{BASE}}/sdk/aimap-sdk.mjs into your project
 import { AiMapClient } from './aimap-sdk.mjs';
-const client = new AiMapClient('{{BASE}}');
+const client = new AiMapClient('{{BASE}}', { token: process.env.AIMAP_TOKEN }); // token only for writes
 const [layer] = await client.layers();
 await client.createFeature({ layerId: layer.id, kind: 'point', name: 'Checkpoint 4',
   geometry: { type: 'Point', coordinates: [46.7, 24.7] } });
@@ -369,6 +370,9 @@ curl -o layer.kml '{{BASE}}/api/v1/layers/&lt;id&gt;/export.kml'</code></pre>
       ['Move the truck', `// call periodically with the latest position
 await map.setMarkers([{ id: 'truck-7', lon, lat, label: 'Truck 7', color: '#34c759' }]);`, () => { step += 1; return map.setMarkers([{ id: 'truck-7', lon: 46.64 + step * 0.01, lat: 24.69 + step * 0.004, label: 'Truck 7', color: '#34c759' }]); }],
       ['Remove markers', `await map.removeMarkers();`, () => map.removeMarkers()],
+      ['Use admin token', `await map.setAuthToken(token);   // ADMIN_API_TOKEN from the server`, async () => log(`admin=${(await map.setAuthToken(document.getElementById('pg-token').value || null)).admin}`)],
+      ['Load first layer', `const [layer] = await map.listLayers();
+await map.setActiveLayer(layer.id);   // loads it and saves new pins there`, async () => { const [layer] = await map.listLayers(); if (!layer) return log('no layers yet: an admin creates one'); await map.setActiveLayer(layer.id); log(`loaded ${layer.name}`); }],
       ['Save a shared pin', `const v = await map.getView();
 const pin = await map.addFeature({
   kind: 'point', name: 'Tutorial example',

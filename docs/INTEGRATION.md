@@ -12,7 +12,12 @@ Everything is served by the map server itself (no internet). Replace `http://map
 Start page with links to the map, tutorial and docs: **`http://maps.local/`** (the map itself is at `/map`). Live examples: **`http://maps.local/sdk/examples/`**. Interactive API reference: **`http://maps.local/api/v1/docs/`**.
 Step-by-step tutorial (with an iframe URL builder and an SDK playground): **`http://maps.local/sdk/examples/tutorial.html`** · [TUTORIAL.md](TUTORIAL.md).
 
-There is no authentication: anything on the LAN that can reach the server can read and write drawings.
+### Admin access and layers
+
+- **Reading is open**: the map, layer list, drawings, search, tiles, OGC API.
+- **Writing is for admins only**: creating, renaming and deleting layers, creating/changing/deleting drawings, and imports. Send `Authorization: Bearer <token>`, where the token is the server's `ADMIN_API_TOKEN` (shown by `aimapctl admin`) or a session token from `POST /api/v1/auth/login {"password": "..."}` (valid 12 h). Without it the API answers `401`.
+- In the web app, admins log in with the lock button in the toolbar. Everyone else sees no drawing tools.
+- **Layers are loaded on demand**: the map starts with no drawings; users tick the named layers they want in the Layers panel (remembered per browser). `?layers=<id or name>,...` on `/map` or `/embed` loads those layers, e.g. `/map?layers=abc`.
 
 ## 1. Embed the map (iframe)
 
@@ -32,7 +37,7 @@ Plain URL, no JavaScript needed:
 | `readonly=1` | Hide drawing tools and all edit/delete actions for the user (host commands can still write) |
 | `interactive=0` | User cannot pan/zoom/rotate (clicks still emit events) |
 | `minZoom`, `maxZoom`, `maxBounds=w,s,e,n` | Zoom range and area limits |
-| `layers=<id>,<id>` | Only these drawing layers visible |
+| `layers=<id or name>,...` | Layers to load (none when omitted) |
 | `select=<featureId>` | Select and zoom to a feature |
 
 `controls` accepts groups and individual controls:
@@ -75,7 +80,7 @@ Embedded maps do not change the full app's saved preferences.
 </script>
 ```
 
-Commands (all return promises): `getView`, `setView`, `fitBounds`, `search`, `listLayers`, `listFeatures`, `addFeature`, `updateFeature`, `deleteFeature`, `selectFeature`, `setLayerVisible`, `setActiveLayer`, `setTool` (`none`, `draw:rectangle|polygon|circle|line|point|text|milsymbol`, `measure:distance|area|rings`), `setOptions` (theme, unit, coordFormat, hillshade, contours, terrain3d), `setMarkers`, `removeMarkers`, `setControls(controls?, readonly?)`, `getControls`, `setInteraction({ interactive, minZoom, maxZoom, maxBounds })`.
+Commands (all return promises): `getView`, `setView`, `fitBounds`, `search`, `listLayers`, `listFeatures`, `addFeature`, `updateFeature`, `deleteFeature`, `selectFeature`, `setLayerVisible` (loads/unloads a layer), `setActiveLayer`, `setAuthToken(token)` (needed before `addFeature`/`updateFeature`/`deleteFeature`), `setTool` (`none`, `draw:rectangle|polygon|circle|line|point|text|milsymbol`, `measure:distance|area|rings`), `setOptions` (theme, unit, coordFormat, hillshade, contours, terrain3d), `setMarkers`, `removeMarkers`, `setControls(controls?, readonly?)`, `getControls`, `setInteraction({ interactive, minZoom, maxZoom, maxBounds })`.
 
 When no drawing layer exists, the first saved feature creates a layer named "Default".
 
@@ -106,6 +111,8 @@ Styles: `/api/v1/styles/{light|dark}.json?terrain=none|hillshade|3d`. Labels are
 
 TypeScript types: `/sdk/aimap-sdk.d.ts`. With npm in a monorepo, depend on `packages/sdk` instead.
 
+> **Changed (admin-only editing, layers on demand):** writes now return `401` without an admin token (REST, SDK: `new AiMapClient(url, { token })` or `client.login(password)`, embed: `map.setAuthToken(token)`); embedded maps no longer show every layer by default (pass `layers=`), and `setLayerVisible` loads/unloads instead of hiding.
+
 > **Removed (English only):** the Arabic interface and every language option are gone: `ui`/`lang` in embed URLs, `uiLang`/`labelLang` in `setOptions`, the `settings.ui`/`settings.labels` controls (`setControls` now rejects them as unknown), and `lang` in the SDK `styleUrl()`/`search()` and in REST `/search` and `/styles`. The REST endpoints and embed URLs silently ignore a leftover `lang`/`ui` parameter.
 
 ## 3. REST API (any language)
@@ -124,10 +131,11 @@ curl -X POST http://maps.local/api/v1/elevation/profile -H 'content-type: applic
 
 # Drawings
 curl http://maps.local/api/v1/layers
-curl -X POST http://maps.local/api/v1/features -H 'content-type: application/json' -d '{
+TOKEN=<ADMIN_API_TOKEN>   # writes need an admin token
+curl -X POST http://maps.local/api/v1/features -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{
   "layerId": "<layer-id>", "kind": "point", "name": "Checkpoint 4",
   "geometry": { "type": "Point", "coordinates": [46.7, 24.7] } }'
-curl -X PATCH http://maps.local/api/v1/features/<id> -H 'content-type: application/json' -d '{"version": 1, "name": "Checkpoint 4B"}'
+curl -X PATCH http://maps.local/api/v1/features/<id> -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"version": 1, "name": "Checkpoint 4B"}'
 ```
 
 Updates use optimistic locking: send the `version` you last read; `409` means someone changed it (the response contains `current`).

@@ -1,8 +1,11 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { ADMIN_TOKEN, expect, test } from './fixtures';
 
-/** Opens a host page on the map server with the SDK loaded and an embedded map. */
-async function host(page: Page, options: Record<string, unknown> = {}) {
+/**
+ * Opens a host page on the map server with the SDK loaded and an embedded map. The host hands over the admin
+ * token (drawing tools and writes need it) unless `admin: false`.
+ */
+async function host(page: Page, { admin = true, ...options }: Record<string, unknown> & { admin?: boolean } = {}) {
   await page.goto('/sdk/examples/index.html');
   await page.addScriptTag({ url: '/sdk/aimap-sdk.js' });
   await page.evaluate((opts) => {
@@ -15,6 +18,7 @@ async function host(page: Page, options: Record<string, unknown> = {}) {
     }
   }, options);
   await expect.poll(() => events(page).then((e) => e.some((x) => x.event === 'ready'))).toBe(true);
+  if (admin) expect(await page.evaluate((t) => (window as any).embed.setAuthToken(t), ADMIN_TOKEN)).toEqual({ admin: true });
   return page.frameLocator('#host iframe');
 }
 
@@ -77,8 +81,9 @@ test.describe('embed URL parameters', () => {
     await data.point(hiddenLayer.id, 46.71, 24.71, 'Hidden');
     const map = await host(page, { layers: [shown.id], select: pin.id, controls: ['layers', 'featurePanel', 'select'] });
     await expect(map.locator('.feature-panel h2')).toContainText('Selected by URL');
-    await expect(map.locator(`[data-layer-id="${hiddenLayer.id}"] .visibility`)).toHaveAttribute('aria-pressed', 'false');
-    await expect(map.locator(`[data-layer-id="${shown.id}"] .visibility`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(map.locator(`[data-layer-id="${hiddenLayer.id}"] .layer-load`)).not.toBeChecked();
+    await expect(map.locator(`[data-layer-id="${shown.id}"] .layer-load`)).toBeChecked();
+    expect((await call(page, 'listFeatures')).map((f: { name: string }) => f.name)).toEqual(['Selected by URL']);
   });
 
   test('interaction lock and zoom limits', async ({ page }) => {
@@ -151,10 +156,14 @@ test.describe('embed commands and events', () => {
   test('features, layers and their events', async ({ page, data }) => {
     const layerA = await data.layer();
     const layerB = await data.layer();
-    await host(page, { controls: ['layers', 'featurePanel', 'select'] });
+    await host(page, { controls: ['layers', 'featurePanel', 'select'], admin: false });
     await expect.poll(async () => (await call(page, 'listLayers')).some((l: { id: string }) => l.id === layerB.id)).toBe(true);
+    expect((await call(page, 'listLayers')).find((l: { id: string }) => l.id === layerB.id).loaded).toBe(false);
 
     await call(page, 'setActiveLayer', layerB.id);
+    // Writing needs the admin token.
+    await expect(call(page, 'addFeature', { kind: 'point', geometry: { type: 'Point', coordinates: [46.7, 24.7] } })).rejects.toThrow('Admin login required');
+    expect(await call(page, 'setAuthToken', ADMIN_TOKEN)).toEqual({ admin: true });
     const f = await call(page, 'addFeature', { kind: 'point', name: 'From host', geometry: { type: 'Point', coordinates: [46.7, 24.7] } });
     expect(f.layerId).toBe(layerB.id);
     expect((await call(page, 'listFeatures', layerB.id)).map((x: { id: string }) => x.id)).toContain(f.id);
@@ -162,12 +171,17 @@ test.describe('embed commands and events', () => {
     const updated = await call(page, 'updateFeature', f.id, { name: 'Renamed by host' });
     expect(updated.version).toBe(2);
     await call(page, 'selectFeature', f.id, true);
-    await call(page, 'setLayerVisible', layerA.id, false);
+    await call(page, 'setLayerVisible', layerA.id, true);
     await expect(call(page, 'setLayerVisible', '00000000-0000-4000-8000-000000000000', false)).rejects.toThrow('Layer not found');
 
-    // A change by another user arrives as an event too.
+    // A change by another user in a loaded layer arrives as an event too ...
     const other = await data.point(layerA.id, 46.8, 24.8, 'From another user');
     await expect.poll(async () => (await events(page)).some((e) => e.event === 'featureCreated' && e.data.feature.id === other.id)).toBe(true);
+    // ... but not once the layer is unloaded.
+    await call(page, 'setLayerVisible', layerA.id, false);
+    const unseen = await data.point(layerA.id, 46.81, 24.81, 'Unloaded layer');
+    await page.waitForTimeout(500);
+    expect((await events(page)).some((e) => e.event === 'featureCreated' && e.data.feature.id === unseen.id)).toBe(false);
 
     await call(page, 'deleteFeature', f.id);
     const names = await eventNames(page);

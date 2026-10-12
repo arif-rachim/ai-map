@@ -227,6 +227,13 @@ fieldset.plain:disabled .row { opacity: 0.6; }
 .chevron { color: var(--label-3); transition: transform 150ms ease; flex: none; }
 .chevron.open { transform: rotate(90deg); }
 .layer-row .rename-input { flex: 1; }
+.layer-load { width: 16px; height: 16px; margin: 0 2px 0 4px; accent-color: var(--accent); flex: none; cursor: pointer; }
+.layer-item:not(.loaded) .layer-name .name { color: var(--label-2); }
+.layer-filter { padding: 0 12px 8px; }
+.layer-filter .text-input { width: 100%; box-sizing: border-box; }
+.admin-login .text-input { width: 100%; box-sizing: border-box; }
+.button.wide { width: 100%; }
+.admin-button.admin-on { color: var(--accent); }
 .feature-list { list-style: none; margin: 0 0 6px; padding: 0 0 0 30px; }
 .feature-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; text-align: start; cursor: pointer; }
 .feature-item:hover { background: var(--hover); }

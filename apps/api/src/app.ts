@@ -3,6 +3,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import websocket from '@fastify/websocket';
 import { openArchives } from './archives.js';
+import { Auth, authOptionsFromConfig, authRoutes, type AuthOptions } from './auth.js';
 import { config } from './config.js';
 import { DemReader } from './dem.js';
 import { HttpError } from './http.js';
@@ -14,7 +15,7 @@ import { ogcRoutes } from './routes/ogc.js';
 import { serviceRoutes } from './routes/services.js';
 import { tileRoutes } from './routes/tiles.js';
 
-export async function buildApp(opts: { logger?: boolean; dataDir?: string } = {}): Promise<FastifyInstance> {
+export async function buildApp(opts: { logger?: boolean; dataDir?: string; auth?: Partial<AuthOptions> } = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: opts.logger ?? true, bodyLimit: 5 * 1024 * 1024, trustProxy: true });
   await app.register(websocket);
 
@@ -28,7 +29,8 @@ export async function buildApp(opts: { logger?: boolean; dataDir?: string } = {}
 
   const dataDir = opts.dataDir ?? config.dataDir;
   const archives = openArchives(dataDir);
-  const ctx: AppContext = { dataDir, archives, dem: new DemReader(archives.terrain) };
+  const auth = new Auth({ ...authOptionsFromConfig(), ...opts.auth });
+  const ctx: AppContext = { dataDir, archives, dem: new DemReader(archives.terrain), auth };
 
   await app.register(swagger, { mode: 'static', specification: { document: openApiDocument as never } });
   await app.register(swaggerUi, { routePrefix: '/api/v1/docs' });
@@ -36,10 +38,11 @@ export async function buildApp(opts: { logger?: boolean; dataDir?: string } = {}
 
   await app.register(
     async (v1) => {
+      await authRoutes(v1, auth);
       await coreRoutes(v1, ctx);
       await tileRoutes(v1, ctx);
       await serviceRoutes(v1, ctx);
-      await exchangeRoutes(v1);
+      await exchangeRoutes(v1, ctx);
       await ogcRoutes(v1);
     },
     { prefix: '/api/v1' },

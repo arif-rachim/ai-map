@@ -7,8 +7,10 @@ import { addClient, broadcast } from '../hub.js';
 import * as repo from '../repo.js';
 import { capabilities, type AppContext } from './context.js';
 
-/** Capabilities, layers, features (CRUD), airports and the real-time event stream. */
+/** Capabilities, layers, features (CRUD, writes for admins only), airports and the real-time event stream. */
 export async function coreRoutes(app: FastifyInstance, ctx: AppContext) {
+  /** Writes need an admin token (see auth.ts). */
+  const admin = { preHandler: ctx.auth.requireAdmin };
   app.get('/health', async () => ({ ok: true }));
   app.get('/capabilities', async () => capabilities(ctx));
 
@@ -32,20 +34,20 @@ export async function coreRoutes(app: FastifyInstance, ctx: AppContext) {
     return layer;
   });
 
-  app.post('/layers', async (req, reply) => {
+  app.post('/layers', admin, async (req, reply) => {
     const layer = await repo.createLayer(parse(LayerInput, req.body));
     broadcast({ type: 'layer.created', layer });
     return reply.code(201).send(layer);
   });
 
-  app.patch('/layers/:id', async (req) => {
+  app.patch('/layers/:id', admin, async (req) => {
     const layer = await repo.updateLayer(parse(IdParams, req.params).id, parse(LayerPatch, req.body));
     if (!layer) throw new HttpError(404, 'Layer not found');
     broadcast({ type: 'layer.updated', layer });
     return layer;
   });
 
-  app.delete('/layers/:id', async (req, reply) => {
+  app.delete('/layers/:id', admin, async (req, reply) => {
     const { id } = parse(IdParams, req.params);
     if (!(await repo.deleteLayer(id))) throw new HttpError(404, 'Layer not found');
     broadcast({ type: 'layer.deleted', id });
@@ -71,13 +73,13 @@ export async function coreRoutes(app: FastifyInstance, ctx: AppContext) {
     return feature;
   });
 
-  app.post('/features', async (req, reply) => {
+  app.post('/features', admin, async (req, reply) => {
     const feature = await repo.createFeature(parse(FeatureInput, req.body));
     broadcast({ type: 'feature.created', feature });
     return reply.code(201).send(feature);
   });
 
-  app.patch('/features/:id', async (req, reply) => {
+  app.patch('/features/:id', admin, async (req, reply) => {
     const { id } = parse(IdParams, req.params);
     const { version, ...patch } = parse(FeaturePatch, req.body);
     const current = await repo.getFeature(id);
@@ -91,7 +93,7 @@ export async function coreRoutes(app: FastifyInstance, ctx: AppContext) {
     return feature;
   });
 
-  app.delete('/features/:id', async (req, reply) => {
+  app.delete('/features/:id', admin, async (req, reply) => {
     const { id } = parse(IdParams, req.params);
     if (!(await repo.deleteFeature(id))) throw new HttpError(404, 'Feature not found');
     broadcast({ type: 'feature.deleted', id });

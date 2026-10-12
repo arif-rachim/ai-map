@@ -85,7 +85,7 @@ Rules:
 
 | Parameter | Meaning |
 |---|---|
-| `readonly=1` | Users cannot create/change/delete drawings (view only) |
+| `readonly=1` | No editing in the map, even for a logged-in admin (view only) |
 | `interactive=0` | Users cannot pan or zoom the map (good for TV screens) |
 | `minZoom`, `maxZoom` | Zoom limits |
 | `maxBounds` | Area limit `west,south,east,north`, e.g. `maxBounds=34,12,60,32` |
@@ -94,7 +94,7 @@ Rules:
 
 | Parameter | Meaning |
 |---|---|
-| `layers=<id>,<id>` | Only these layers are visible (layer IDs: see `http://maps.local/api/v1/layers`) |
+| `layers=abc,<id>` | Layers to load, by name or ID (list: `http://maps.local/api/v1/layers`). Without it the map starts with no drawings |
 | `select=<object id>` | Open and zoom to a specific object |
 
 ### A7. Ready-made recipes
@@ -171,10 +171,11 @@ Every Part A parameter can be used as an option (`theme`, `controls`, `interacti
 | Search | `const results = await map.search('Riyadh')` |
 | Temporary markers owned by your page | `map.setMarkers([{ id: 'truck-7', lon: 46.7, lat: 24.7, label: 'Truck 7' }])` |
 | Remove markers | `map.removeMarkers(['truck-7'])` or `map.removeMarkers()` |
+| Admin rights for your page (needed to save/change/delete) | `await map.setAuthToken('<ADMIN_API_TOKEN>')` |
 | Save an object (shared with all users) | `await map.addFeature({ kind: 'point', geometry: {...}, name: 'Post 1' })` |
 | Change / delete an object | `map.updateFeature(id, { name: 'Post 1B' })`, `map.deleteFeature(id)` |
 | Select an object | `map.selectFeature(id, true)` |
-| Layers | `map.listLayers()`, `map.setLayerVisible(id, false)`, `map.setActiveLayer(id)` |
+| Layers | `map.listLayers()`, load/unload: `map.setLayerVisible(id, true/false)`, `map.setActiveLayer(id)` |
 | Tools | `map.setTool('measure:distance')`, `map.setTool('draw:polygon')`, `map.setTool('none')` |
 | Appearance | `map.setOptions({ theme: 'dark', unit: 'nm', terrain3d: true })` |
 | Components at runtime | `map.setControls(['none'])`, `map.setControls(['all', '-draw'], true)` |
@@ -288,7 +289,8 @@ Use this when your application already has its own map.
 ```js
 import { AiMapClient } from './aimap-sdk.mjs'; // copy from http://maps.local/sdk/aimap-sdk.mjs
 
-const client = new AiMapClient('http://maps.local');
+// Reading needs no token; writing needs the admin API token (aimapctl admin on the server).
+const client = new AiMapClient('http://maps.local', { token: process.env.AIMAP_TOKEN });
 const [layer] = await client.layers();
 await client.createFeature({ layerId: layer.id, kind: 'point', name: 'Checkpoint 4', geometry: { type: 'Point', coordinates: [46.7, 24.7] } });
 

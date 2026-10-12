@@ -19,7 +19,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aimap"]
+      # TCP check: during first-time init Postgres listens only on its socket, so a socket check passes too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U aimap -d aimap"]
       interval: 5s
       retries: 30
     networks: [internal]
@@ -38,6 +39,12 @@ services:
       # Base URL for links in TileJSON / styles / OGC responses. https also works for plain-http clients,
       # while http links would be blocked as mixed content on https pages. Empty = derive from each request.
       PUBLIC_URL: ${PUBLIC_URL-https://map.jac.mil.ae}
+      # Only admins may create/edit layers and drawings: web login with ADMIN_PASSWORD,
+      # other applications send "Authorization: Bearer ${ADMIN_API_TOKEN}". Empty = nobody can edit.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-}
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      ADMIN_SESSION_HOURS: ${ADMIN_SESSION_HOURS:-12}
     volumes:
       - ${DATA_ROOT:-/opt/aimap/data}:/data:ro
     healthcheck:

@@ -64,7 +64,8 @@ export interface EmbedCommands {
   setView: { params: Partial<MapView> & { animate?: boolean }; result: void };
   fitBounds: { params: { bounds: [number, number, number, number]; padding?: number; maxZoom?: number }; result: void };
   search: { params: { q: string; limit?: number }; result: SearchResultItem[] };
-  listLayers: { params: void; result: MapLayer[] };
+  /** Every layer, with `loaded` telling which ones are drawn on the map. */
+  listLayers: { params: void; result: (MapLayer & { loaded: boolean })[] };
   listFeatures: { params: { layerId?: string }; result: MapFeature[] };
   /** Persists a feature (shared with all users). `layerId` defaults to the active layer. */
   addFeature: { params: Omit<Partial<FeatureInput>, 'kind' | 'geometry'> & Pick<FeatureInput, 'kind' | 'geometry'>; result: MapFeature };
@@ -72,7 +73,10 @@ export interface EmbedCommands {
   updateFeature: { params: { id: string; patch: Omit<FeaturePatch, 'version'> & { version?: number } }; result: MapFeature };
   deleteFeature: { params: { id: string }; result: void };
   selectFeature: { params: { id: string | null; zoomTo?: boolean }; result: void };
+  /** Loads (`visible: true`) or unloads a layer; only loaded layers are drawn and listed by listFeatures. */
   setLayerVisible: { params: { layerId: string; visible: boolean }; result: void };
+  /** Admin token for writes (ADMIN_API_TOKEN or a session token); `null` signs out. Kept in memory only. */
+  setAuthToken: { params: { token: string | null }; result: { admin: boolean } };
   setActiveLayer: { params: { layerId: string }; result: void };
   setTool: { params: { tool: ToolName }; result: void };
   setOptions: { params: EmbedOptions; result: void };
@@ -122,11 +126,11 @@ export interface EmbedUrlParams {
   bearing?: number;
   pitch?: number;
   theme?: ThemePreference;
-  /** Visible drawing layers (others hidden). */
+  /** Layers to load, by id or name (none when omitted). */
   layers?: string[];
   /** Visible UI controls; see `resolveControls` (groups, leaves like `draw.point`, `none`, `all`, `-exclusions`). Default: all. */
   controls?: string[];
-  /** Hides editing for the end user (host commands can still write). */
+  /** Hides editing even for admins (host commands with a token can still write). */
   readonly?: boolean;
   select?: string;
   hillshade?: boolean;

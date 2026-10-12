@@ -31,7 +31,8 @@ export const test = base.extend<{ guard: void; data: TestData }>({
 function watch(page: Page, problems: string[], allowed: Set<string>) {
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() === 'error') problems.push(`console: ${m.text()}`);
+    // 401 answers are the API refusing a write without admin rights, which some tests do on purpose.
+    if (m.type() === 'error' && !m.text().includes('status of 401')) problems.push(`console: ${m.text()}`);
   });
   page.on('request', (r) => {
     const u = new URL(r.url());
@@ -39,7 +40,11 @@ function watch(page: Page, problems: string[], allowed: Set<string>) {
   });
 }
 
-/** Creates layers/features through the public API and removes them afterwards. */
+/** The server's ADMIN_API_TOKEN: writing needs admin rights. */
+export const ADMIN_TOKEN = process.env.E2E_ADMIN_TOKEN ?? '';
+const adminHeaders = { authorization: `Bearer ${ADMIN_TOKEN}` };
+
+/** Creates layers/features through the public API (as admin) and removes them afterwards. */
 export class TestData {
   private layers: string[] = [];
   constructor(private readonly request: APIRequestContext) {}
@@ -49,15 +54,15 @@ export class TestData {
   }
 
   async layer(name = `e2e ${Date.now()} ${Math.random().toString(36).slice(2, 6)}`): Promise<MapLayer> {
-    const res = await this.request.post('/api/v1/layers', { data: { name } });
-    expect(res.status()).toBe(201);
+    const res = await this.request.post('/api/v1/layers', { data: { name }, headers: adminHeaders });
+    expect(res.status(), 'creating test data needs E2E_ADMIN_TOKEN').toBe(201);
     const layer = (await res.json()) as MapLayer;
     this.layers.push(layer.id);
     return layer;
   }
 
   async point(layerId: string, lon: number, lat: number, name: string): Promise<MapFeature> {
-    const res = await this.request.post('/api/v1/features', { data: { layerId, kind: 'point', geometry: { type: 'Point', coordinates: [lon, lat] }, name } });
+    const res = await this.request.post('/api/v1/features', { data: { layerId, kind: 'point', geometry: { type: 'Point', coordinates: [lon, lat] }, name }, headers: adminHeaders });
     expect(res.status()).toBe(201);
     return res.json();
   }
@@ -67,18 +72,24 @@ export class TestData {
   }
 
   async cleanup() {
-    for (const id of this.layers) await this.request.delete(`/api/v1/layers/${id}`);
+    for (const id of this.layers) await this.request.delete(`/api/v1/layers/${id}`, { headers: adminHeaders });
   }
 }
 
-export async function openMap(page: Page, path = '/map') {
-  await page.addInitScript(() => {
+/**
+ * Opens the app with fresh storage. `admin` (default) signs in with the admin token;
+ * `layers` loads those layers (?layers=), since the map starts with none.
+ */
+export async function openMap(page: Page, path = '/map', opts: { admin?: boolean; layers?: string[] } = {}) {
+  await page.addInitScript((token) => {
     try {
       localStorage.clear();
+      if (token) localStorage.setItem('aimap.adminToken', token);
     } catch {
       // storage unavailable
     }
-  });
+  }, opts.admin === false ? '' : ADMIN_TOKEN);
+  if (opts.layers?.length) path += `${path.includes('?') ? '&' : '?'}layers=${opts.layers.join(',')}`;
   await page.goto(path);
   await waitMapReady(page);
 }

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { ADMIN_TOKEN, expect, test } from './fixtures';
 
 /** A blank page on the map server with MapLibre + SDK loaded as ES modules, exposed on window. */
 async function modulePage(page: Page) {
@@ -59,7 +59,7 @@ test.describe('SDK with your own MapLibre map', () => {
     expect(await names()).toEqual(['Existing pin']);
     await data.point(layer.id, 46.72, 24.72, 'Live pin');
     await expect.poll(names).toEqual(['Existing pin', 'Live pin']);
-    await page.request.delete(`/api/v1/features/${first.id}`);
+    await page.request.delete(`/api/v1/features/${first.id}`, { headers: { authorization: `Bearer ${ADMIN_TOKEN}` } });
     await expect.poll(names).toEqual(['Live pin']);
     await expect.poll(rendered).toBe(1);
 
@@ -75,8 +75,11 @@ test.describe('SDK with your own MapLibre map', () => {
     const layer = await data.layer();
     await modulePage(page);
     const result = await page.evaluate(
-      async ({ layerId, terrain }) => {
+      async ({ layerId, terrain, token }) => {
         const c = (window as any).client;
+        // Reading needs no token; the import (a write) fails without one.
+        const denied = await c.importGeoJSON(layerId, { type: 'FeatureCollection', features: [] }).then(() => 0, (e: { status: number }) => e.status);
+        c.token = token;
         const imported = await c.importGeoJSON(layerId, {
           type: 'FeatureCollection',
           features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [55.27, 25.2] }, properties: { name: 'Imported' } }],
@@ -89,10 +92,12 @@ test.describe('SDK with your own MapLibre map', () => {
           imported: imported.created,
           exported: exported.features.map((f: { properties: { name: string } }) => f.properties.name),
           exportUrl: c.exportUrl(layerId, 'kml'),
+          denied,
         };
       },
-      { layerId: layer.id, terrain: caps.terrain },
+      { layerId: layer.id, terrain: caps.terrain, token: ADMIN_TOKEN },
     );
+    expect(result.denied).toBe(401);
     expect(result.coords).toBe('coordinates');
     expect(result.imported).toBe(1);
     expect(result.exported).toEqual(['Imported']);

@@ -7,6 +7,8 @@ import type { MapFeature, MapLayer } from '@ai-map/shared';
 
 // Integration tests against a real PostGIS. Run with: DATABASE_URL=postgres://... npm test -w @ai-map/api
 const enabled = !!process.env.DATABASE_URL;
+const ADMIN_TOKEN = 'test-admin-token';
+const admin = { authorization: `Bearer ${ADMIN_TOKEN}` };
 
 describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
   let app: FastifyInstance;
@@ -16,14 +18,14 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     const { migrate } = await import('./db.js');
     const { buildApp } = await import('./app.js');
     await migrate(new URL('../migrations', import.meta.url).pathname);
-    app = await buildApp({ logger: false });
-    const res = await app.inject({ method: 'POST', url: '/api/v1/layers', payload: { name: `test-${Date.now()}` } });
+    app = await buildApp({ logger: false, auth: { adminPassword: 'test-password', adminApiToken: ADMIN_TOKEN, secret: 'test-secret' } });
+    const res = await app.inject({ method: 'POST', headers: admin, url: '/api/v1/layers', payload: { name: `test-${Date.now()}` } });
     expect(res.statusCode).toBe(201);
     layer = res.json();
   });
 
   afterAll(async () => {
-    if (layer) await app.inject({ method: 'DELETE', url: `/api/v1/layers/${layer.id}` });
+    if (layer) await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/layers/${layer.id}` });
     await app?.close();
     const { pool } = await import('./db.js');
     await pool.end();
@@ -31,9 +33,35 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
 
   const polygon = { type: 'Polygon', coordinates: [[[46, 24], [47, 24], [47, 25], [46, 25], [46, 24]]] };
 
+  it('lets everyone read but only admins write', async () => {
+    expect((await app.inject({ url: '/api/v1/layers' })).statusCode).toBe(200);
+    expect((await app.inject({ url: '/api/v1/auth/session' })).json()).toEqual({ admin: false, loginEnabled: true });
+    const anon = await app.inject({ method: 'POST', url: '/api/v1/layers', payload: { name: 'nope' } });
+    expect(anon.statusCode).toBe(401);
+    expect(anon.headers['www-authenticate']).toBe('Bearer');
+    for (const [method, url] of [['PATCH', `/api/v1/layers/${layer.id}`], ['DELETE', `/api/v1/layers/${layer.id}`], ['POST', '/api/v1/features'], ['POST', `/api/v1/layers/${layer.id}/import`]] as const) {
+      expect((await app.inject({ method, url, payload: {} })).statusCode, `${method} ${url}`).toBe(401);
+    }
+    const wrongToken = { authorization: 'Bearer nope' };
+    expect((await app.inject({ method: 'POST', url: '/api/v1/layers', headers: wrongToken, payload: { name: 'x' } })).statusCode).toBe(401);
+
+    expect((await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { password: 'wrong' } })).statusCode).toBe(401);
+    const login = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { password: 'test-password' } });
+    expect(login.statusCode).toBe(200);
+    const session = { authorization: `Bearer ${login.json().token}` };
+    expect((await app.inject({ url: '/api/v1/auth/session', headers: session })).json()).toMatchObject({ admin: true });
+    const renamed = await app.inject({ method: 'PATCH', url: `/api/v1/layers/${layer.id}`, headers: session, payload: { name: layer.name } });
+    expect(renamed.statusCode).toBe(200);
+    // A tampered or expired session is rejected.
+    const [v, exp, mac] = login.json().token.split('.');
+    const forged = { authorization: `Bearer ${v}.${Number(exp) + 1}.${mac}` };
+    expect((await app.inject({ method: 'PATCH', url: `/api/v1/layers/${layer.id}`, headers: forged, payload: { name: 'x' } })).statusCode).toBe(401);
+  });
+
   it('creates, updates with optimistic locking, and deletes a feature', async () => {
     const created = await app.inject({
       method: 'POST',
+      headers: admin,
       url: '/api/v1/features',
       payload: { layerId: layer.id, kind: 'rectangle', geometry: polygon, name: 'Zone' },
     });
@@ -43,27 +71,29 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     expect(f.style.strokeColor).toMatch(/^#/);
     expect(f.geometry).toEqual(polygon);
 
-    const updated = await app.inject({ method: 'PATCH', url: `/api/v1/features/${f.id}`, payload: { version: 1, name: 'Zone B', style: { ...f.style, fillOpacity: 0.5 } } });
+    const updated = await app.inject({ method: 'PATCH', headers: admin, url: `/api/v1/features/${f.id}`, payload: { version: 1, name: 'Zone B', style: { ...f.style, fillOpacity: 0.5 } } });
     expect(updated.statusCode).toBe(200);
     expect(updated.json<MapFeature>()).toMatchObject({ version: 2, name: 'Zone B', style: { fillOpacity: 0.5 } });
 
-    const stale = await app.inject({ method: 'PATCH', url: `/api/v1/features/${f.id}`, payload: { version: 1, name: 'stale' } });
+    const stale = await app.inject({ method: 'PATCH', headers: admin, url: `/api/v1/features/${f.id}`, payload: { version: 1, name: 'stale' } });
     expect(stale.statusCode).toBe(409);
     expect(stale.json().current.name).toBe('Zone B');
 
-    expect((await app.inject({ method: 'DELETE', url: `/api/v1/features/${f.id}` })).statusCode).toBe(204);
-    expect((await app.inject({ method: 'DELETE', url: `/api/v1/features/${f.id}` })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/features/${f.id}` })).statusCode).toBe(204);
+    expect((await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/features/${f.id}` })).statusCode).toBe(404);
   });
 
   it('stores circle center and radius and milsymbol SIDC', async () => {
     const circle = await app.inject({
       method: 'POST',
+      headers: admin,
       url: '/api/v1/features',
       payload: { layerId: layer.id, kind: 'circle', geometry: polygon, center: [46.5, 24.5], radiusM: 1234.5 },
     });
     expect(circle.json<MapFeature>()).toMatchObject({ center: [46.5, 24.5], radiusM: 1234.5 });
     const sym = await app.inject({
       method: 'POST',
+      headers: admin,
       url: '/api/v1/features',
       payload: { layerId: layer.id, kind: 'milsymbol', geometry: { type: 'Point', coordinates: [46, 24] }, sidc: '10061000001211000000' },
     });
@@ -71,15 +101,15 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
   });
 
   it('rejects invalid input', async () => {
-    const res = await app.inject({ method: 'POST', url: '/api/v1/features', payload: { layerId: layer.id, kind: 'circle', geometry: { type: 'Point', coordinates: [500, 0] } } });
+    const res = await app.inject({ method: 'POST', headers: admin, url: '/api/v1/features', payload: { layerId: layer.id, kind: 'circle', geometry: { type: 'Point', coordinates: [500, 0] } } });
     expect(res.statusCode).toBe(400);
-    expect((await app.inject({ method: 'PATCH', url: '/api/v1/features/not-a-uuid', payload: { version: 1 } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'PATCH', headers: admin, url: '/api/v1/features/not-a-uuid', payload: { version: 1 } })).statusCode).toBe(400);
   });
 
   it('cascades feature deletion with the layer', async () => {
-    const tmp = (await app.inject({ method: 'POST', url: '/api/v1/layers', payload: { name: 'tmp' } })).json<MapLayer>();
-    await app.inject({ method: 'POST', url: '/api/v1/features', payload: { layerId: tmp.id, kind: 'point', geometry: { type: 'Point', coordinates: [1, 1] } } });
-    expect((await app.inject({ method: 'DELETE', url: `/api/v1/layers/${tmp.id}` })).statusCode).toBe(204);
+    const tmp = (await app.inject({ method: 'POST', headers: admin, url: '/api/v1/layers', payload: { name: 'tmp' } })).json<MapLayer>();
+    await app.inject({ method: 'POST', headers: admin, url: '/api/v1/features', payload: { layerId: tmp.id, kind: 'point', geometry: { type: 'Point', coordinates: [1, 1] } } });
+    expect((await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/layers/${tmp.id}` })).statusCode).toBe(204);
     const list = (await app.inject({ method: 'GET', url: `/api/v1/features?layerId=${tmp.id}` })).json<MapFeature[]>();
     expect(list).toHaveLength(0);
   });
@@ -96,7 +126,7 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
   });
 
   it('exports and imports GeoJSON, exports KML, and replaces atomically', async () => {
-    const tmp = (await app.inject({ method: 'POST', url: '/api/v1/layers', payload: { name: 'exchange' } })).json<MapLayer>();
+    const tmp = (await app.inject({ method: 'POST', headers: admin, url: '/api/v1/layers', payload: { name: 'exchange' } })).json<MapLayer>();
     const fc = {
       type: 'FeatureCollection',
       features: [
@@ -105,7 +135,7 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
         { type: 'Feature', geometry: { type: 'GeometryCollection', geometries: [] }, properties: {} },
       ],
     };
-    const imported = await app.inject({ method: 'POST', url: `/api/v1/layers/${tmp.id}/import`, payload: fc, headers: { 'content-type': 'application/geo+json' } });
+    const imported = await app.inject({ method: 'POST', url: `/api/v1/layers/${tmp.id}/import`, payload: fc, headers: { ...admin, 'content-type': 'application/geo+json' } });
     expect(imported.statusCode).toBe(200);
     expect(imported.json()).toMatchObject({ created: 3, deleted: 0 });
     expect(imported.json().errors).toHaveLength(1);
@@ -120,18 +150,18 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     expect(kml.body).toContain('<kml');
     expect(kml.body).toContain('<name>HQ</name>');
 
-    const replaced = await app.inject({ method: 'POST', url: `/api/v1/layers/${tmp.id}/import?mode=replace`, payload: { type: 'Feature', geometry: { type: 'Point', coordinates: [1, 1] }, properties: {} } });
+    const replaced = await app.inject({ method: 'POST', headers: admin, url: `/api/v1/layers/${tmp.id}/import?mode=replace`, payload: { type: 'Feature', geometry: { type: 'Point', coordinates: [1, 1] }, properties: {} } });
     expect(replaced.json()).toMatchObject({ created: 1, deleted: 3 });
 
-    const bad = await app.inject({ method: 'POST', url: `/api/v1/layers/${tmp.id}/import`, payload: { hello: 'world' } });
+    const bad = await app.inject({ method: 'POST', headers: admin, url: `/api/v1/layers/${tmp.id}/import`, payload: { hello: 'world' } });
     expect(bad.statusCode).toBe(400);
-    await app.inject({ method: 'DELETE', url: `/api/v1/layers/${tmp.id}` });
+    await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/layers/${tmp.id}` });
   });
 
   it('serves OGC API - Features collections with paging', async () => {
-    const tmp = (await app.inject({ method: 'POST', url: '/api/v1/layers', payload: { name: 'ogc' } })).json<MapLayer>();
+    const tmp = (await app.inject({ method: 'POST', headers: admin, url: '/api/v1/layers', payload: { name: 'ogc' } })).json<MapLayer>();
     for (let i = 0; i < 3; i++) {
-      await app.inject({ method: 'POST', url: '/api/v1/features', payload: { layerId: tmp.id, kind: 'point', geometry: { type: 'Point', coordinates: [10 + i, 10] } } });
+      await app.inject({ method: 'POST', headers: admin, url: '/api/v1/features', payload: { layerId: tmp.id, kind: 'point', geometry: { type: 'Point', coordinates: [10 + i, 10] } } });
     }
     const landing = (await app.inject({ url: '/api/v1/ogc' })).json();
     expect(landing.links.map((l: { rel: string }) => l.rel)).toEqual(expect.arrayContaining(['conformance', 'data', 'service-desc']));
@@ -145,7 +175,7 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     expect(bboxed.numberMatched).toBe(2);
     const item = await app.inject({ url: `/api/v1/ogc/collections/${tmp.id}/items/${page.features[0].id}` });
     expect(item.statusCode).toBe(200);
-    await app.inject({ method: 'DELETE', url: `/api/v1/layers/${tmp.id}` });
+    await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/layers/${tmp.id}` });
   });
 
   it('publishes OpenAPI, styles and TileJSON', async (t) => {
@@ -202,20 +232,20 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     expect(city[0].iata).toBe('JED');
   });
   it('reads single layers and features, with 404s', async () => {
-    const f = (await app.inject({ method: 'POST', url: '/api/v1/features', payload: { layerId: layer.id, kind: 'point', geometry: { type: 'Point', coordinates: [3, 3] } } })).json<MapFeature>();
+    const f = (await app.inject({ method: 'POST', headers: admin, url: '/api/v1/features', payload: { layerId: layer.id, kind: 'point', geometry: { type: 'Point', coordinates: [3, 3] } } })).json<MapFeature>();
     expect((await app.inject({ url: `/api/v1/layers/${layer.id}` })).json<MapLayer>().name).toBe(layer.name);
     expect((await app.inject({ url: `/api/v1/features/${f.id}` })).json<MapFeature>().id).toBe(f.id);
     const missing = '00000000-0000-4000-8000-000000000000';
     expect((await app.inject({ url: `/api/v1/layers/${missing}` })).statusCode).toBe(404);
     expect((await app.inject({ url: `/api/v1/features/${missing}` })).statusCode).toBe(404);
-    expect((await app.inject({ method: 'PATCH', url: `/api/v1/layers/${missing}`, payload: { name: 'x' } })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'PATCH', headers: admin, url: `/api/v1/layers/${missing}`, payload: { name: 'x' } })).statusCode).toBe(404);
     expect((await app.inject({ url: '/api/v1/airports/ZZZZZZ' })).statusCode).toBe(404);
   });
 
   it('filters and pages features and GeoJSON by bbox', async () => {
-    const tmp = (await app.inject({ method: 'POST', url: '/api/v1/layers', payload: { name: 'paging' } })).json<MapLayer>();
+    const tmp = (await app.inject({ method: 'POST', headers: admin, url: '/api/v1/layers', payload: { name: 'paging' } })).json<MapLayer>();
     for (const lon of [20, 21, 22, 40]) {
-      await app.inject({ method: 'POST', url: '/api/v1/features', payload: { layerId: tmp.id, kind: 'point', geometry: { type: 'Point', coordinates: [lon, 5] }, name: String(lon) } });
+      await app.inject({ method: 'POST', headers: admin, url: '/api/v1/features', payload: { layerId: tmp.id, kind: 'point', geometry: { type: 'Point', coordinates: [lon, 5] }, name: String(lon) } });
     }
     const q = (s: string) => app.inject({ url: `/api/v1/features?layerId=${tmp.id}&${s}` }).then((r) => r.json<MapFeature[]>().map((f) => f.name));
     expect(await q('bbox=19,4,23,6')).toEqual(['20', '21', '22']);
@@ -224,7 +254,7 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     expect((await app.inject({ url: '/api/v1/features?bbox=5,5,1,1' })).statusCode).toBe(400);
     const gj = (await app.inject({ url: `/api/v1/features.geojson?layerId=${tmp.id}&bbox=39,4,41,6` })).json();
     expect(gj.features.map((x: { properties: { name: string } }) => x.properties.name)).toEqual(['40']);
-    await app.inject({ method: 'DELETE', url: `/api/v1/layers/${tmp.id}` });
+    await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/layers/${tmp.id}` });
   });
 
   it('broadcasts changes over the WebSocket event stream', async () => {
@@ -233,9 +263,9 @@ describe.skipIf(!enabled)('api (PostGIS integration; set DATABASE_URL)', () => {
     const received: string[] = [];
     await new Promise((resolve, reject) => ((ws.onopen = resolve), (ws.onerror = reject)));
     ws.onmessage = (e) => received.push(JSON.parse(String(e.data)).type);
-    const created = (await app.inject({ method: 'POST', url: '/api/v1/features', payload: { layerId: layer.id, kind: 'point', geometry: { type: 'Point', coordinates: [4, 4] } } })).json<MapFeature>();
-    await app.inject({ method: 'PATCH', url: `/api/v1/features/${created.id}`, payload: { version: 1, name: 'ws' } });
-    await app.inject({ method: 'DELETE', url: `/api/v1/features/${created.id}` });
+    const created = (await app.inject({ method: 'POST', headers: admin, url: '/api/v1/features', payload: { layerId: layer.id, kind: 'point', geometry: { type: 'Point', coordinates: [4, 4] } } })).json<MapFeature>();
+    await app.inject({ method: 'PATCH', headers: admin, url: `/api/v1/features/${created.id}`, payload: { version: 1, name: 'ws' } });
+    await app.inject({ method: 'DELETE', headers: admin, url: `/api/v1/features/${created.id}` });
     await vi.waitFor(() => expect(received).toEqual(['feature.created', 'feature.updated', 'feature.deleted']));
     ws.close();
   });

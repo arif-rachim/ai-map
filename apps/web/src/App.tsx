@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { PanelLeft, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from './lib/api';
+import { initAuth } from './lib/auth';
+import { loadLayer, resyncLayers } from './lib/layers';
 import { connectRealtime } from './lib/ws';
 import { embed, useStore } from './store';
 import { startEmbedBridge } from './lib/embedBridge';
@@ -21,12 +23,15 @@ import { AlertDialog, IconButton, Section } from './components/ui';
 let initialSelectDone = false;
 
 async function resync() {
-  const [layers, features] = await Promise.all([api.layers(), api.features()]);
-  useStore.getState().loadAll(layers, features);
-  // /embed?select=<featureId>: select and zoom once on first load.
+  await resyncLayers();
+  // /embed?select=<featureId>: select and zoom once on first load (loading its layer if needed).
   const id = embed.params.select;
   if (id && !initialSelectDone) {
     initialSelectDone = true;
+    if (!useStore.getState().features[id]) {
+      const found = await api.feature(id).catch(() => null);
+      if (found) await loadLayer(found.layerId);
+    }
     const f = useStore.getState().features[id];
     if (f) {
       useStore.getState().select(id);
@@ -46,12 +51,13 @@ export function App() {
   useEffect(() => {
     const s = useStore.getState();
     const stopBridge = embed.enabled ? startEmbedBridge() : () => {};
+    void initAuth();
     api.capabilities().then(s.setCapabilities, () => s.setCapabilities({ region: false, world: false, terrain: false, terrainMaxzoom: null, terrainBounds: null, geocoder: false }));
     const stopRealtime = connectRealtime(
       (m) => useStore.getState().applyServerMessage(m),
       (online) => {
         useStore.getState().setOnline(online);
-        // Load (or reload after reconnect) the shared drawings.
+        // Load (or reload after reconnect) the layer list and the drawings of the loaded layers.
         if (online) resync().catch((err: Error) => useStore.getState().notify(err.message));
       },
     );
